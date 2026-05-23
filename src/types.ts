@@ -8,11 +8,10 @@ export interface TrilingualWord {
   trilingual_content: {
     emoji: string;
     english: { word: string; phonics: string; sentence: string; };
-    nepali: { word: string; roman: string; sentence: string; };
     japanese: { word: string; kana: string; romaji: string; sentence: string; };
   };
   interactive_quiz: {
-    question_nepali: string;
+    question: string;
     options: string[];
     correct_answer: string;
     star_points: number;

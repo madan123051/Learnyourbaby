@@ -70,7 +70,7 @@ const QuizGame: React.FC<{
         <span className="text-6xl mb-4">🎉</span>
         <h2 className="text-2xl font-bold mb-2">Quiz Complete!</h2>
         <p className="text-4xl font-bold text-primary mb-2">⭐ {score} Stars</p>
-        <p className="text-base-content/60 mb-6">शाबास! बहुत बढ़िया!</p>
+        <p className="text-base-content/60 mb-6">Amazing work! 🎉</p>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={() => {
             setQuestions(shuffleArray(VOCABULARY).slice(0, 10));
@@ -94,7 +94,7 @@ const QuizGame: React.FC<{
       <div className="flex-1 flex flex-col items-center justify-center">
         <span className="text-5xl mb-4">{currentQ.trilingual_content.emoji}</span>
         <h3 className="text-lg font-bold text-center mb-6 px-2">
-          {currentQ.interactive_quiz.question_nepali}
+          {currentQ.interactive_quiz.question}
         </h3>
 
         <div className="w-full max-w-sm space-y-3">
@@ -217,7 +217,7 @@ const MatchingGame: React.FC<{
         <span className="text-6xl mb-4">🏆</span>
         <h2 className="text-2xl font-bold mb-2">All Matched!</h2>
         <p className="text-4xl font-bold text-primary mb-2">⭐ {score} Stars</p>
-        <p className="text-base-content/60 mb-6">बहुत बढ़िया! Great job!</p>
+        <p className="text-base-content/60 mb-6">Great job! 🌟</p>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={initGame}>
             <RotateCcw size={16} /> Play Again

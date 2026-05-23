@@ -40,8 +40,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
     return (
       <div className="p-4">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold">📚 सीखो तीन भाषा!</h2>
-          <p className="text-base-content/60 mt-1">Learn in English, नेपाली & 日本語</p>
+          <h2 className="text-2xl font-bold">📚 Learn Two Languages!</h2>
+          <p className="text-base-content/60 mt-1">Learn in English & 日本語</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {CATEGORIES.map(cat => {
@@ -111,15 +111,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
               </>
             ) : (
               <div className="space-y-4 w-full">
-                {/* Nepali */}
-                <div className="bg-base-300 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-base-content/60">🇳🇵 नेपाली</span>
-                  </div>
-                  <p className="text-2xl font-bold mt-1">{word.trilingual_content.nepali.word}</p>
-                  <p className="text-sm text-base-content/60">({word.trilingual_content.nepali.roman})</p>
-                  <p className="text-xs italic mt-1">{word.trilingual_content.nepali.sentence}</p>
-                </div>
                 {/* Japanese */}
                 <div className="bg-base-300 rounded-lg p-3">
                   <div className="flex items-center justify-between">
