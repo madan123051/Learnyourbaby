@@ -8,7 +8,7 @@ import { MagicCanvasScreen } from './components/MagicCanvasScreen';
 import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 
 type Tab = {
-  id: TabId;
+  id: GameFeatureTab;
   icon: React.ReactNode;
   label: string;
 };
@@ -22,7 +22,7 @@ const TABS: Tab[] = [
 ];
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [activeTab, setActiveTab] = useState<GameFeatureTab>('home');
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -80,7 +80,7 @@ const App: React.FC = () => {
       </div>
 
       <div className="sticky bottom-0 bg-white/85 backdrop-blur border-t border-white/60">
-        <div className="flex justify-around">
+        <div className="grid grid-cols-5">
           {TABS.map(tab => (
             <button
               key={tab.id}
