@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Map, Sparkles, Stars, PencilLine, Circle } from 'lucide-react';
-import { UserProgress } from './types';
+import { Map, Sparkles, Stars, Pencil, Circle } from 'lucide-react';
+import { TabId, UserProgress } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
-import { MagicCanvas } from './components/nextgen/MagicCanvas';
-import { FloatingPlayground } from './components/nextgen/FloatingPlayground';
-import { GameFeatureTab } from './features';
+import { MagicCanvasScreen } from './components/MagicCanvasScreen';
+import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 
 type Tab = {
   id: GameFeatureTab;
@@ -18,8 +17,8 @@ const TABS: Tab[] = [
   { id: 'home', icon: <Map size={20} />, label: 'World Map' },
   { id: 'sumi', icon: <Sparkles size={20} />, label: 'Treehouse' },
   { id: 'games', icon: <Stars size={20} />, label: 'Pop Quiz' },
-  { id: 'magicCanvas', icon: <PencilLine size={20} />, label: 'Magic Canvas' },
-  { id: 'floatingPlayground', icon: <Circle size={20} />, label: 'Floating Fun' },
+  { id: 'magicCanvas', icon: <Pencil size={20} />, label: 'Magic Canvas' },
+  { id: 'floatingPlayground', icon: <Circle size={20} />, label: 'Floating' },
 ];
 
 const App: React.FC = () => {
@@ -76,8 +75,8 @@ const App: React.FC = () => {
         {activeTab === 'home' && <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />}
         {activeTab === 'sumi' && <SumiSensei />}
         {activeTab === 'games' && <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />}
-        {activeTab === 'magicCanvas' && <MagicCanvas />}
-        {activeTab === 'floatingPlayground' && <FloatingPlayground />}
+        {activeTab === 'magicCanvas' && <MagicCanvasScreen />}
+        {activeTab === 'floatingPlayground' && <FloatingPlaygroundScreen />}
       </div>
 
       <div className="sticky bottom-0 bg-white/85 backdrop-blur border-t border-white/60">
