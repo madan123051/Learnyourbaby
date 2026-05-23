@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Map, Sparkles, Stars } from 'lucide-react';
-import { TabId, UserProgress } from './types';
+import { Map, Sparkles, Stars, PencilLine, Circle } from 'lucide-react';
+import { UserProgress } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
+import { MagicCanvas } from './components/nextgen/MagicCanvas';
+import { FloatingPlayground } from './components/nextgen/FloatingPlayground';
+import { GameFeatureTab } from './features';
 
 type Tab = {
-  id: TabId;
+  id: GameFeatureTab;
   icon: React.ReactNode;
   label: string;
 };
@@ -15,10 +18,12 @@ const TABS: Tab[] = [
   { id: 'home', icon: <Map size={20} />, label: 'World Map' },
   { id: 'sumi', icon: <Sparkles size={20} />, label: 'Treehouse' },
   { id: 'games', icon: <Stars size={20} />, label: 'Pop Quiz' },
+  { id: 'magicCanvas', icon: <PencilLine size={20} />, label: 'Magic Canvas' },
+  { id: 'floatingPlayground', icon: <Circle size={20} />, label: 'Floating Fun' },
 ];
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [activeTab, setActiveTab] = useState<GameFeatureTab>('home');
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -71,10 +76,12 @@ const App: React.FC = () => {
         {activeTab === 'home' && <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />}
         {activeTab === 'sumi' && <SumiSensei />}
         {activeTab === 'games' && <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />}
+        {activeTab === 'magicCanvas' && <MagicCanvas />}
+        {activeTab === 'floatingPlayground' && <FloatingPlayground />}
       </div>
 
       <div className="sticky bottom-0 bg-white/85 backdrop-blur border-t border-white/60">
-        <div className="flex justify-around">
+        <div className="grid grid-cols-5">
           {TABS.map(tab => (
             <button
               key={tab.id}
