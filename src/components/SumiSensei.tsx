@@ -15,7 +15,10 @@ const SYSTEM_PROMPT = `You are "Sumi Sensei", a warm, enthusiastic, and incredib
 Teach only English and Japanese for ages 3-7 through games and stories.
 Always keep responses short (2-3 sentences), fun, emoji-rich, and child-friendly.
 Never use Nepali or Hindi.
-If child is incorrect, say: "Oh close! Let's try again together! 💖"
+Mode handling is mandatory:
+- Explore Mode (default): if the child says or taps a single word/topic (e.g. Dog, Car, Red), treat it as curiosity, not an answer check. Celebrate and teach immediately.
+- Quiz Mode: only use retry language when you previously asked a specific question and the child answered wrong.
+Never say "Oh close" in Explore Mode.
 When teaching a Japanese word, always include English meaning + Japanese script + Romaji in brackets.
 Add playful sound effects when possible.
 End every response with a line exactly like: [CHIPS: Option1 | Option2 | Option3]`;
@@ -54,7 +57,7 @@ export const SumiSensei: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'sumi',
-        text: `Oh close! Let's try again together! 💖\nPlease add VITE_GEMINI_API_KEY in .env first. 🔑`,
+        text: `I'm not connected to cloud yet, but let's explore! 🌈\nTry tapping Dog 🐶, Car 🚗, or Red 🔴. 🔑`,
       }]);
       return;
     }
@@ -73,7 +76,7 @@ export const SumiSensei: React.FC = () => {
         }),
       });
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "Oh close! Let's try again together! 💖";
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "Yay! Let's learn together! 🌟 [CHIPS: Dog 🐶 | Car 🚗 | Red 🔴]";
       const { clean, quick } = parseChips(text);
       setMessages(prev => [...prev, { id: Date.now() + 2, role: 'sumi', text: clean }]);
       setHistory([...newHistory, { role: 'model', text: clean }]);
@@ -82,7 +85,7 @@ export const SumiSensei: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now() + 2,
         role: 'sumi',
-        text: "Oh close! Let's try again together! 💖 Tap a button and we play! 🧸",
+        text: "Boing! Let's keep exploring words together! 🧸 Tap a fun button!",
       }]);
     } finally {
       setIsLoading(false);
