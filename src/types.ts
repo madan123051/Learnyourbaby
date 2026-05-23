@@ -33,4 +33,4 @@ export interface UserProgress {
   streak: number;
 }
 
-export type TabId = 'home' | 'sumi' | 'games';
+export type TabId = 'home' | 'sumi' | 'games' | 'magicCanvas' | 'floatingPlayground';
