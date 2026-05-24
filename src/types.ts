@@ -34,3 +34,4 @@ export interface UserProgress {
 }
 
 export type TabId = 'home' | 'sumi' | 'games' | 'magicCanvas' | 'floatingPlayground';
+export type GameFeatureTab = TabId;

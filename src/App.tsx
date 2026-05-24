@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Map, Sparkles, Stars, Pencil, Circle } from 'lucide-react';
-import { TabId, UserProgress } from './types';
+import { TabId, UserProgress, GameFeatureTab } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
