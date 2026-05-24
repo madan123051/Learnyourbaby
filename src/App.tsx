@@ -62,6 +62,23 @@ const App: React.FC = () => {
     setProgress(prev => ({ ...prev, gamesPlayed: prev.gamesPlayed + 1 }));
   };
 
+  // ✅ FloatingPlayground gets true fullscreen — no header, no nav
+  if (activeTab === 'floatingPlayground') {
+    return (
+      <div className="fixed inset-0 w-full h-full overflow-hidden" style={{ touchAction: 'none' }}>
+        <FloatingPlaygroundScreen />
+        {/* Floating back button — bottom-left corner */}
+        <button
+          onClick={() => setActiveTab('home')}
+          className="fixed bottom-6 left-6 z-[9999] bg-white/90 backdrop-blur rounded-full shadow-2xl w-14 h-14 flex items-center justify-center text-2xl border-2 border-purple-200 active:scale-90 transition-all"
+          aria-label="Back to home"
+        >
+          🏠
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-[#fff8ed] via-[#f4f8ff] to-[#eefdf6]">
       <div className="sticky top-0 z-20 bg-white/70 backdrop-blur border-b border-white/40">
@@ -76,7 +93,6 @@ const App: React.FC = () => {
         {activeTab === 'sumi' && <SumiSensei />}
         {activeTab === 'games' && <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />}
         {activeTab === 'magicCanvas' && <MagicCanvasScreen />}
-        {activeTab === 'floatingPlayground' && <FloatingPlaygroundScreen />}
       </div>
 
       <div className="sticky bottom-0 bg-white/85 backdrop-blur border-t border-white/60">
