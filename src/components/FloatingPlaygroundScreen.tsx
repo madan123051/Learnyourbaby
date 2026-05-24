@@ -699,7 +699,7 @@ const TouchRippleComponent: React.FC<{ ripple: TouchRipple }> = React.memo(({ ri
 
 // ---------- Floating Score Text ----------
 
-const FloatingTextComponent: React.FC<{ text: FloatingText }> = React.memo(({ ft }) => (
+const FloatingTextComponent: React.FC<{ text: FloatingText }> = React.memo(({ text: ft }) => (
   <div
     className="absolute pointer-events-none font-black"
     style={{
