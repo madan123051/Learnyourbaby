@@ -23,6 +23,7 @@ const TABS: Tab[] = [
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<GameFeatureTab>('home');
+  const [isPlaygroundLocked, setIsPlaygroundLocked] = useState(false);
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -65,16 +66,33 @@ const App: React.FC = () => {
   // ✅ FloatingPlayground gets true fullscreen — no header, no nav
   if (activeTab === 'floatingPlayground') {
     return (
-      <div className="fixed inset-0 w-full h-full overflow-hidden" style={{ touchAction: 'none' }}>
-        <FloatingPlaygroundScreen />
-        {/* Floating back button — bottom-left corner */}
-        <button
-          onClick={() => setActiveTab('home')}
-          className="fixed bottom-6 left-6 z-[9999] bg-white/90 backdrop-blur rounded-full shadow-2xl w-14 h-14 flex items-center justify-center text-2xl border-2 border-purple-200 active:scale-90 transition-all"
-          aria-label="Back to home"
-        >
-          🏠
-        </button>
+      <div
+        className="fixed inset-0 w-screen h-screen overflow-hidden"
+        style={{ touchAction: 'none', WebkitOverflowScrolling: 'touch' }}
+      >
+        <FloatingPlaygroundScreen onLockChange={setIsPlaygroundLocked} />
+
+        {/* Back button — only visible when NOT locked */}
+        {!isPlaygroundLocked && (
+          <button
+            onClick={() => setActiveTab('home')}
+            className="fixed bottom-8 left-8 z-[9999] bg-white/90 backdrop-blur rounded-full shadow-2xl w-16 h-16 flex items-center justify-center text-2xl border-2 border-purple-200 active:scale-90 transition-all"
+            aria-label="Back to home"
+            style={{ touchAction: 'manipulation' }}
+          >
+            🏠
+          </button>
+        )}
+
+        {/* Locked indicator on back button position */}
+        {isPlaygroundLocked && (
+          <div
+            className="fixed bottom-8 left-8 z-[9999] bg-red-500/80 backdrop-blur rounded-full shadow-2xl w-16 h-16 flex items-center justify-center text-2xl border-2 border-red-300"
+            title="Screen is locked"
+          >
+            🔒
+          </div>
+        )}
       </div>
     );
   }
