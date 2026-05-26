@@ -32,7 +32,6 @@ interface FloatingBubble {
   bounceCount: number;
   age: number;
   specialEffect: SpecialEffect | null;
-  contentType: 'emoji' | 'letter' | 'number';
 }
 
 interface Particle {
@@ -164,8 +163,6 @@ const EMOJI_CATEGORIES: Record<string, string[]> = {
   music: ['🎵', '🎶', '🎤', '🎧', '🎸', '🎹', '🎺', '🎷', '🥁', '🪘', '🎻', '🪕', '🎼', '🎙️', '📻', '🔔', '🔊', '📯', '🪈', '🎚️'],
   faces: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😋', '😛', '😜', '🤪', '😝', '🤗', '🤭', '🤫', '🤔', '🫣', '🤐', '😏', '🥳', '🤠'],
   weather: ['☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨', '🌪️', '🌫️', '🌈', '🌊', '💧'],
-  letters: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'],
-  numbers: ['0','1','2','3','4','5','6','7','8','9'],
   shapes: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💗', '💖', '💝', '💘', '💕', '💞', '💓', '💟', '⭐', '🌟', '✨', '💫', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤'],
   flags: ['🏁', '🚩', '🎌', '🏴', '🏳️', '🏳️‍🌈', '🏳️‍⚧️', '🇯🇵', '🇺🇸', '🇬🇧', '🇫🇷', '🇩🇪', '🇮🇹', '🇪🇸', '🇧🇷', '🇮🇳', '🇨🇳', '🇰🇷', '🇦🇺', '🇨🇦'],
 };
@@ -264,34 +261,6 @@ const getRandomGlow = (): string => GLOW_COLORS[Math.floor(Math.random() * GLOW_
 const getRandomCategory = (): string => {
   const categories = Object.keys(EMOJI_CATEGORIES);
   return categories[Math.floor(Math.random() * categories.length)];
-};
-
-const getEmojiForDifficulty = (difficulty: string): { emoji: string; contentType: 'emoji' | 'letter' | 'number' } => {
-  if (difficulty === 'toddler') {
-    const rand = Math.random();
-    if (rand < 0.4) {
-      const letters = EMOJI_CATEGORIES['letters'];
-      return { emoji: letters[Math.floor(Math.random() * letters.length)], contentType: 'letter' };
-    }
-    if (rand < 0.6) {
-      const numbers = EMOJI_CATEGORIES['numbers'];
-      return { emoji: numbers[Math.floor(Math.random() * numbers.length)], contentType: 'number' };
-    }
-    return { emoji: getRandomEmoji('animals'), contentType: 'emoji' };
-  }
-  if (difficulty === 'easy') {
-    const rand = Math.random();
-    if (rand < 0.2) {
-      const letters = EMOJI_CATEGORIES['letters'];
-      return { emoji: letters[Math.floor(Math.random() * letters.length)], contentType: 'letter' };
-    }
-    if (rand < 0.3) {
-      const numbers = EMOJI_CATEGORIES['numbers'];
-      return { emoji: numbers[Math.floor(Math.random() * numbers.length)], contentType: 'number' };
-    }
-    return { emoji: getRandomEmoji(), contentType: 'emoji' };
-  }
-  return { emoji: getRandomEmoji(), contentType: 'emoji' };
 };
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -437,17 +406,15 @@ const createBubble = (
   const speed = settings.speed;
   const category = getRandomCategory();
   const color = getRandomColor();
-  const emojiResult = getEmojiForDifficulty(difficulty);
-  const bubbleSize = difficulty === 'toddler' ? Math.floor(randomRange(80, 110)) : Math.floor(randomRange(46, 72));
 
   return {
     id,
-    emoji: emojiResult.emoji,
+    emoji: getRandomEmoji(category),
     x: overrideX ?? randomRange(8, 88),
     y: overrideY ?? randomRange(12, 82),
     dx: (Math.random() - 0.5) * speed * 2,
     dy: (Math.random() - 0.5) * speed * 2,
-    size: bubbleSize,
+    size: Math.floor(randomRange(46, 72)),
     rotation: Math.random() * 360,
     rotationSpeed: (Math.random() - 0.5) * 3,
     scale: 1,
@@ -468,7 +435,6 @@ const createBubble = (
     bounceCount: 0,
     age: 0,
     specialEffect: specialEffect || null,
-    contentType: emojiResult.contentType,
   };
 };
 
@@ -617,23 +583,15 @@ const BubbleComponent: React.FC<{
   return (
     <button
       className="absolute rounded-full flex items-center justify-center cursor-pointer select-none active:scale-110 hover:brightness-110"
-      style={{ ...bubbleStyle, ...glowStyle, background: bubble.contentType === 'letter' 
-        ? `radial-gradient(circle at 35% 35%, ${bubble.color}dd, ${bubble.color}ff)`
-        : bubble.contentType === 'number'
-        ? `radial-gradient(circle at 35% 35%, ${bubble.color}cc, ${bubble.color}ff)`
-        : `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8), ${bubble.color}40, ${bubble.color}80)` }}
+      style={{ ...bubbleStyle, ...glowStyle, background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8), ${bubble.color}40, ${bubble.color}80)` }}
       onClick={handleClick}
       onTouchStart={handleClick}
       aria-label={`Pop ${bubble.emoji} bubble`}
     >
       <span
         style={{
-          fontSize: bubble.contentType === 'emoji' ? bubble.size * 0.48 : bubble.size * 0.52,
+          fontSize: bubble.size * 0.48,
           lineHeight: 1,
-          fontWeight: bubble.contentType !== 'emoji' ? '900' : 'normal',
-          fontFamily: bubble.contentType !== 'emoji' ? 'Arial Black, Arial, sans-serif' : 'inherit',
-          color: bubble.contentType === 'letter' ? '#fff' : bubble.contentType === 'number' ? '#fff' : 'inherit',
-          textShadow: bubble.contentType !== 'emoji' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
           filter: bubble.specialEffect === 'golden' ? 'drop-shadow(0 0 4px gold)' : 'none',
         }}
       >
@@ -1066,11 +1024,7 @@ const ExperienceBar: React.FC<{ experience: number; experienceToNext: number; le
 // MAIN COMPONENT
 // ============================================================================
 
-interface FloatingPlaygroundProps {
-  onLockChange?: (locked: boolean) => void;
-}
-
-export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ onLockChange }) => {
+export const FloatingPlaygroundScreen: React.FC = () => {
   // --- State ---
   const [bubbles, setBubbles] = useState<FloatingBubble[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -1079,12 +1033,6 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [activePowerUps, setActivePowerUps] = useState<{ type: PowerUpType; timer: number; duration: number }[]>([]);
   const [achievementToast, setAchievementToast] = useState<Achievement | null>(null);
-  const [screenLocked, setScreenLocked] = useState(false);
-
-  // Notify parent of lock state changes
-  useEffect(() => {
-    onLockChange?.(screenLocked);
-  }, [screenLocked, onLockChange]);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(1);
 
@@ -1102,9 +1050,6 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
           comboTimer: 0,
           combo: 0,
           sessionTime: 0,
-          score: isNaN(parsed.score) ? 0 : (parsed.score || 0),
-          multiplier: isNaN(parsed.multiplier) ? 1 : (parsed.multiplier || 1),
-          totalStarsEarned: isNaN(parsed.totalStarsEarned) ? 0 : (parsed.totalStarsEarned || 0),
           achievements: parsed.achievements || INITIAL_ACHIEVEMENTS,
         };
       } catch (_) {}
@@ -1494,9 +1439,8 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
     setGameState((prev) => {
       const newCombo = prev.combo + 1;
       const comboMultiplier = 1 + Math.floor(newCombo / 3) * 0.5;
-      const safeMultiplier = isNaN(prev.multiplier) || !prev.multiplier ? 1 : prev.multiplier;
-      const pointsMultiplier = (settings.pointsMultiplier || 1) * comboMultiplier * safeMultiplier * (hasDoublePoints ? 2 : 1) * (hasMultiplier ? 3 : 1);
-      const points = Math.max(1, Math.round(basePoints * (isNaN(pointsMultiplier) ? 1 : pointsMultiplier)));
+      const pointsMultiplier = settings.pointsMultiplier * comboMultiplier * prev.multiplier * (hasDoublePoints ? 2 : 1) * (hasMultiplier ? 3 : 1);
+      const points = Math.round(basePoints * pointsMultiplier);
 
       const newExp = prev.experience + points;
       let newLevel = prev.level;
@@ -1830,13 +1774,6 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
                 <span className="text-lg">🏆</span>
               </button>
               <button
-                onClick={() => setScreenLocked(prev => !prev)}
-                className={`p-2 rounded-full active:scale-90 transition-all ${screenLocked ? 'bg-red-100 ring-2 ring-red-400 animate-pulse' : 'bg-green-100 hover:bg-green-200'}`}
-                title={screenLocked ? 'Screen Locked - tap to unlock' : 'Lock Screen'}
-              >
-                <span className="text-lg">{screenLocked ? '🔒' : '🔓'}</span>
-              </button>
-              <button
                 onClick={() => setGameState((prev) => ({ ...prev, showSettings: true }))}
                 className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all"
               >
@@ -1900,7 +1837,8 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
         ))}
       </div>
 
-      {/* Combo indicator removed - distracting for kids */}
+      {/* Combo Indicator */}
+      <ComboIndicator combo={gameState.combo} comboTimer={gameState.comboTimer} />
 
       {/* Active Power-Ups Display */}
       <ActivePowerUpDisplay activePowerUps={activePowerUps} />
@@ -1989,16 +1927,6 @@ export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundProps> = ({ on
 
       {/* Level Up Animation */}
       <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={() => setShowLevelUp(false)} />
-
-      {/* Screen Lock Overlay - shows lock icon when locked */}
-      {screenLocked && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[350] pointer-events-none">
-          <div className="bg-red-500/80 backdrop-blur rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
-            <span className="text-white text-xl">🔒</span>
-            <span className="text-white font-black text-sm">SCREEN LOCKED</span>
-          </div>
-        </div>
-      )}
 
       {/* Pause Overlay */}
       {gameState.isPaused && !gameState.showSettings && !gameState.showStats && !gameState.showAchievements && (
