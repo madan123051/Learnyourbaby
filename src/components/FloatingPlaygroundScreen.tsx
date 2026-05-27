@@ -1024,7 +1024,11 @@ const ExperienceBar: React.FC<{ experience: number; experienceToNext: number; le
 // MAIN COMPONENT
 // ============================================================================
 
-export const FloatingPlaygroundScreen: React.FC = () => {
+interface FloatingPlaygroundScreenProps {
+  onLockChange?: (locked: boolean) => void;
+}
+
+export const FloatingPlaygroundScreen: React.FC<FloatingPlaygroundScreenProps> = ({ onLockChange }) => {
   // --- State ---
   const [bubbles, setBubbles] = useState<FloatingBubble[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -1035,6 +1039,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
   const [achievementToast, setAchievementToast] = useState<Achievement | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(1);
+  const [isLocked, setIsLocked] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem('floatingPlaygroundState');
@@ -1704,6 +1709,16 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     setActivePowerUps([]);
   }, []);
 
+  const handleToggleLock = useCallback(() => {
+    setIsLocked((prev) => {
+      const next = !prev;
+      onLockChange?.(next);
+      soundManager.tap();
+      vibrate(next ? [20, 10, 40] : 20, gameState.vibrationEnabled);
+      return next;
+    });
+  }, [gameState.vibrationEnabled, onLockChange]);
+
   const handleClearBubbles = useCallback(() => {
     soundManager.tap();
     // Create explosion particles for all bubbles
@@ -1725,7 +1740,18 @@ export const FloatingPlaygroundScreen: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="h-full w-full relative overflow-hidden select-none" style={{ touchAction: 'none' }}>
+    <div
+      className="relative overflow-hidden select-none"
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
+        touchAction: 'none',
+        zIndex: 9999,
+      }}
+    >
       {/* Animated Background */}
       <AnimatedBackground theme={gameState.theme} gameMode={gameState.gameMode} />
 
@@ -1778,6 +1804,14 @@ export const FloatingPlaygroundScreen: React.FC = () => {
                 className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all"
               >
                 <span className="text-lg">⚙️</span>
+              </button>
+              {/* Screen Lock Button */}
+              <button
+                onClick={handleToggleLock}
+                className={`p-2 rounded-full active:scale-90 transition-all ${isLocked ? 'bg-red-200 hover:bg-red-300' : 'bg-green-100 hover:bg-green-200'}`}
+                title={isLocked ? 'Unlock Screen' : 'Lock Screen'}
+              >
+                <span className="text-lg">{isLocked ? '🔒' : '🔓'}</span>
               </button>
             </div>
           </div>
