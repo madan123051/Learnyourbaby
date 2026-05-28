@@ -6,6 +6,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
 import { StarsScreen } from './components/StarsScreen';
+import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 
 type Tab = {
   id: TabId;
@@ -18,6 +19,7 @@ const TABS: Tab[] = [
   { id: 'sumi', icon: <Sparkles size={20} />, label: 'Sumi AI' },
   { id: 'games', icon: <Gamepad2 size={20} />, label: 'Games' },
   { id: 'stars', icon: <Trophy size={20} />, label: 'Progress' },
+  { id: 'floatingPlayground', icon: <span>🎈</span>, label: 'Floating' },
 ];
 
 const App: React.FC = () => {
@@ -101,6 +103,8 @@ const App: React.FC = () => {
             gamesPlayed={progress.gamesPlayed}
           />
         );
+      case 'floatingPlayground':
+        return <FloatingPlaygroundScreen />;
       default:
         return null;
     }
