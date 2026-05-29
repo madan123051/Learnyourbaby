@@ -65,7 +65,7 @@ interface PowerUp {
 
 type SpecialEffect = 'rainbow' | 'golden' | 'mega' | 'multiplier' | 'magnet' | 'freeze' | 'firework' | 'disco';
 type PowerUpType = 'doublePoints' | 'slowMotion' | 'magnetPull' | 'freezeAll' | 'rainbowMode' | 'megaBubble' | 'scoreMultiplier' | 'timeSlow' | 'shieldBubble' | 'explosionChain';
-type GameMode = 'freePlay' | 'challenge' | 'zen' | 'rainbow' | 'speedRun' | 'memory' | 'pattern' | 'musical';
+type GameMode = 'freePlay' | 'challenge' | 'zen' | 'rainbow' | 'speedRun' | 'memory' | 'pattern' | 'musical' | 'alphabet';
 type ThemeType = 'sky' | 'ocean' | 'forest' | 'space' | 'candy' | 'sunset' | 'arctic' | 'volcano';
 type DifficultyLevel = 'toddler' | 'easy' | 'medium' | 'hard' | 'expert';
 
@@ -153,6 +153,7 @@ interface FloatingText {
 // ============================================================================
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
+  alphabet: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'],
   animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🐠', '🐟', '🐡', '🐬', '🐳', '🐋', '🦈', '🐊'],
   fruits: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🫒', '🥑', '🍆', '🥕', '🌽', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜'],
   nature: ['🌸', '🌺', '🌻', '🌹', '🌷', '🌼', '💐', '🌿', '☘️', '🍀', '🍃', '🍂', '🍁', '🌾', '🌵', '🎋', '🎍', '🌲', '🌳', '🌴', '🪴', '🪻', '🪷', '🌊', '🏔️', '⛰️', '🗻', '🌋', '🏝️', '🏜️'],
@@ -213,6 +214,7 @@ const GAME_MODES: Record<GameMode, { name: string; emoji: string; description: s
   memory: { name: 'Memory', emoji: '🧠', description: 'Remember and match!' },
   pattern: { name: 'Pattern', emoji: '🎯', description: 'Follow the pattern!' },
   musical: { name: 'Musical', emoji: '🎵', description: 'Make music by popping!' },
+  alphabet: { name: 'ABC Mode', emoji: '🔤', description: 'Learn the alphabet A-Z!' },
 };
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -258,8 +260,10 @@ const getRandomColor = (): string => BUBBLE_COLORS[Math.floor(Math.random() * BU
 
 const getRandomGlow = (): string => GLOW_COLORS[Math.floor(Math.random() * GLOW_COLORS.length)];
 
-const getRandomCategory = (): string => {
-  const categories = Object.keys(EMOJI_CATEGORIES);
+const getRandomCategory = (forceCategory?: string): string => {
+  if (forceCategory) return forceCategory;
+  // exclude alphabet from random selection (only shown in alphabet mode)
+  const categories = Object.keys(EMOJI_CATEGORIES).filter(c => c !== 'alphabet');
   return categories[Math.floor(Math.random() * categories.length)];
 };
 
@@ -401,10 +405,11 @@ const createBubble = (
   overrideX?: number,
   overrideY?: number,
   specialEffect?: SpecialEffect | null,
+  forceCategory?: string,
 ): FloatingBubble => {
   const settings = DIFFICULTY_SETTINGS[difficulty];
   const speed = settings.speed;
-  const category = getRandomCategory();
+  const category = getRandomCategory(forceCategory);
   const color = getRandomColor();
 
   return {
@@ -590,8 +595,11 @@ const BubbleComponent: React.FC<{
     >
       <span
         style={{
-          fontSize: bubble.size * 0.48,
+          fontSize: bubble.category === 'alphabet' ? bubble.size * 0.58 : bubble.size * 0.48,
           lineHeight: 1,
+          fontWeight: bubble.category === 'alphabet' ? '900' : 'normal',
+          color: bubble.category === 'alphabet' ? '#fff' : 'inherit',
+          textShadow: bubble.category === 'alphabet' ? '0 2px 6px rgba(0,0,0,0.4)' : 'none',
           filter: bubble.specialEffect === 'golden' ? 'drop-shadow(0 0 4px gold)' : 'none',
         }}
       >
@@ -1025,6 +1033,22 @@ const ExperienceBar: React.FC<{ experience: number; experienceToNext: number; le
 // ============================================================================
 
 export const FloatingPlaygroundScreen: React.FC = () => {
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  const toggleFullscreen = React.useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
   // --- State ---
   const [bubbles, setBubbles] = useState<FloatingBubble[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -1061,7 +1085,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       totalPops: 0,
       level: 1,
       experience: 0,
-      experienceToNext: 50,
+      experienceToNext: 500,
       streak: 0,
       bestStreak: 0,
       multiplier: 1,
@@ -1157,7 +1181,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     const initial: FloatingBubble[] = [];
     for (let i = 0; i < initialCount; i++) {
       const id = bubbleIdCounter.current++;
-      initial.push(createBubble(id, gameState.difficulty));
+      initial.push(createBubble(id, gameState.difficulty, undefined, undefined, null, gameState.gameMode === 'alphabet' ? 'alphabet' : undefined));
     }
     setBubbles(initial);
     setGameState((prev) => ({ ...prev, bubblesCreated: prev.bubblesCreated + initialCount }));
@@ -1177,7 +1201,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
           else if (specialChance < 0.06) special = 'mega';
           else if (specialChance < 0.08) special = 'rainbow';
 
-          const newBubble = createBubble(id, gameState.difficulty, undefined, undefined, special);
+          const newBubble = createBubble(id, gameState.difficulty, undefined, undefined, special, gameState.gameMode === 'alphabet' ? 'alphabet' : undefined);
           setGameState((gs) => ({ ...gs, bubblesCreated: gs.bubblesCreated + 1 }));
           return [...prev, newBubble];
         }
@@ -1451,7 +1475,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       while (newExpRemaining >= newExpToNext) {
         newExpRemaining -= newExpToNext;
         newLevel++;
-        newExpToNext = Math.round(newExpToNext * 1.3);
+        newExpToNext = Math.round(newExpToNext * 2.0);
         soundManager.levelUp();
         setShowLevelUp(true);
         setNewLevel(newLevel);
@@ -1510,7 +1534,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
         if (specialChance < 0.04) special = 'golden';
         else if (specialChance < 0.07) special = 'mega';
         else if (specialChance < 0.09) special = 'rainbow';
-        const newBubble = createBubble(newId, gameState.difficulty, undefined, undefined, special);
+        const newBubble = createBubble(newId, gameState.difficulty, undefined, undefined, special, gameState.gameMode === 'alphabet' ? 'alphabet' : undefined);
         setGameState((gs) => ({ ...gs, bubblesCreated: gs.bubblesCreated + 1 }));
         return [...filtered, newBubble];
       });
@@ -1638,7 +1662,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     const newBubbles: FloatingBubble[] = [];
     for (let i = 0; i < count; i++) {
       const id = bubbleIdCounter.current++;
-      newBubbles.push(createBubble(id, gameState.difficulty));
+      newBubbles.push(createBubble(id, gameState.difficulty, undefined, undefined, null, gameState.gameMode === 'alphabet' ? 'alphabet' : undefined));
     }
     setBubbles((prev) => [...prev, ...newBubbles]);
     setGameState((prev) => ({ ...prev, bubblesCreated: prev.bubblesCreated + count }));
@@ -1651,7 +1675,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     for (let i = 0; i < 10; i++) {
       setTimeout(() => {
         const id = bubbleIdCounter.current++;
-        const newBubble = createBubble(id, gameState.difficulty, randomRange(10, 90), 5);
+        const newBubble = createBubble(id, gameState.difficulty, randomRange(10, 90), 5, null, gameState.gameMode === 'alphabet' ? 'alphabet' : undefined);
         newBubble.dy = randomRange(0.3, 0.8);
         setBubbles((prev) => [...prev, newBubble]);
         setGameState((prev) => ({ ...prev, bubblesCreated: prev.bubblesCreated + 1 }));
@@ -1689,7 +1713,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     poppedCategoriesRef.current.clear();
     setGameState({
       score: 0, combo: 0, maxCombo: 0, totalPops: 0, level: 1,
-      experience: 0, experienceToNext: 50, streak: 0, bestStreak: 0, multiplier: 1,
+      experience: 0, experienceToNext: 500, streak: 0, bestStreak: 0, multiplier: 1,
       gameMode: 'freePlay', theme: 'sky', difficulty: 'easy',
       isPaused: false, showSettings: false, showStats: false, showAchievements: false,
       soundEnabled: true, vibrationEnabled: true, comboTimer: 0, comboDecay: 0.02,
@@ -1778,6 +1802,13 @@ export const FloatingPlaygroundScreen: React.FC = () => {
                 className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all"
               >
                 <span className="text-lg">⚙️</span>
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full bg-green-100 hover:bg-green-200 active:scale-90 transition-all"
+                title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+              >
+                <span className="text-lg">{isFullscreen ? '⛶' : '⛶'}</span>
               </button>
             </div>
           </div>
