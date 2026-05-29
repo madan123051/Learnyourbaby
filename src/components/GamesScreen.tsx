@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Trophy, RotateCcw, Zap, CheckCircle } from 'lucide-react';
+import { Trophy, RotateCcw, Zap, CheckCircle, XCircle } from 'lucide-react';
 import { TrilingualWord } from '../types';
 import { VOCABULARY, CATEGORIES } from '../data/vocabulary';
 
@@ -70,7 +70,7 @@ const QuizGame: React.FC<{
         <span className="text-6xl mb-4">🎉</span>
         <h2 className="text-2xl font-bold mb-2">Quiz Complete!</h2>
         <p className="text-4xl font-bold text-primary mb-2">⭐ {score} Stars</p>
-        <p className="text-base-content/60 mb-6">Amazing work! 🎉</p>
+        <p className="text-base-content/60 mb-6">शाबास! बहुत बढ़िया!</p>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={() => {
             setQuestions(shuffleArray(VOCABULARY).slice(0, 10));
@@ -94,7 +94,7 @@ const QuizGame: React.FC<{
       <div className="flex-1 flex flex-col items-center justify-center">
         <span className="text-5xl mb-4">{currentQ.trilingual_content.emoji}</span>
         <h3 className="text-lg font-bold text-center mb-6 px-2">
-          {currentQ.interactive_quiz.question}
+          {currentQ.interactive_quiz.question_nepali}
         </h3>
 
         <div className="w-full max-w-sm space-y-3">
@@ -104,13 +104,14 @@ const QuizGame: React.FC<{
               if (opt === currentQ.interactive_quiz.correct_answer) {
                 cls = 'btn btn-success w-full';
               } else if (opt === selected) {
-                cls = 'btn btn-warning w-full';
+                cls = 'btn btn-error w-full';
               }
             }
             return (
               <button key={opt} className={cls} onClick={() => handleAnswer(opt)}>
                 {selected && opt === currentQ.interactive_quiz.correct_answer && <CheckCircle size={16} />}
-                                {opt}
+                {selected && opt === selected && opt !== currentQ.interactive_quiz.correct_answer && <XCircle size={16} />}
+                {opt}
               </button>
             );
           })}
@@ -216,7 +217,7 @@ const MatchingGame: React.FC<{
         <span className="text-6xl mb-4">🏆</span>
         <h2 className="text-2xl font-bold mb-2">All Matched!</h2>
         <p className="text-4xl font-bold text-primary mb-2">⭐ {score} Stars</p>
-        <p className="text-base-content/60 mb-6">Great job! 🌟</p>
+        <p className="text-base-content/60 mb-6">बहुत बढ़िया! Great job!</p>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={initGame}>
             <RotateCcw size={16} /> Play Again
@@ -273,8 +274,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
   return (
     <div className="p-4">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">🌟 Pop-Pop Star Quiz</h2>
-        <p className="text-base-content/60 mt-1">Pop the right bubble and collect Star Coins!</p>
+        <h2 className="text-2xl font-bold">🎮 Fun Games!</h2>
+        <p className="text-base-content/60 mt-1">खेल-खेल में सीखो!</p>
       </div>
 
       <div className="space-y-4 max-w-sm mx-auto">
@@ -285,7 +286,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
           <div className="card-body flex-row items-center gap-4">
             <span className="text-4xl">📝</span>
             <div className="text-left">
-              <h3 className="font-bold text-lg">Bubble Quiz</h3>
+              <h3 className="font-bold text-lg">MCQ Quiz</h3>
               <p className="text-sm text-base-content/60">10 सवालों का क्विज़ — सही जवाब दो, Stars कमाओ!</p>
             </div>
             <Zap className="text-warning ml-auto" size={24} />
@@ -299,7 +300,7 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
           <div className="card-body flex-row items-center gap-4">
             <span className="text-4xl">🧩</span>
             <div className="text-left">
-              <h3 className="font-bold text-lg">Drag Match</h3>
+              <h3 className="font-bold text-lg">Matching Game</h3>
               <p className="text-sm text-base-content/60">English शब्द को Japanese से मिलाओ!</p>
             </div>
             <Trophy className="text-secondary ml-auto" size={24} />

@@ -1,3 +1,4 @@
+// ===== Vocabulary Item =====
 export interface TrilingualWord {
   meta_data: {
     id: string;
@@ -7,17 +8,32 @@ export interface TrilingualWord {
   };
   trilingual_content: {
     emoji: string;
-    english: { word: string; phonics: string; sentence: string; };
-    japanese: { word: string; kana: string; romaji: string; sentence: string; };
+    english: {
+      word: string;
+      phonics: string;
+      sentence: string;
+    };
+    nepali: {
+      word: string;
+      roman: string;
+      sentence: string;
+    };
+    japanese: {
+      word: string;
+      kana: string;
+      romaji: string;
+      sentence: string;
+    };
   };
   interactive_quiz: {
-    question: string;
+    question_nepali: string;
     options: string[];
     correct_answer: string;
     star_points: number;
   };
 }
 
+// ===== Category =====
 export interface Category {
   name: string;
   emoji: string;
@@ -25,6 +41,17 @@ export interface Category {
   description: string;
 }
 
+// ===== Game Types =====
+export interface MatchPair {
+  id: string;
+  text: string;
+  matchId: string;
+  matched: boolean;
+  selected: boolean;
+  type: 'english' | 'japanese';
+}
+
+// ===== Progress =====
 export interface UserProgress {
   totalStars: number;
   wordsLearned: string[];
@@ -33,5 +60,5 @@ export interface UserProgress {
   streak: number;
 }
 
-export type TabId = 'home' | 'sumi' | 'games' | 'magicCanvas' | 'floatingPlayground';
-export type GameFeatureTab = TabId;
+// ===== Tab =====
+export type TabId = 'home' | 'sumi' | 'games' | 'stars' | 'floatingPlayground';

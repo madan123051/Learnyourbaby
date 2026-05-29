@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Map, Sparkles, Stars, Pencil, Circle } from 'lucide-react';
-import { TabId, UserProgress, GameFeatureTab } from './types';
+import { Home, Sparkles, Gamepad2, Trophy } from 'lucide-react';
+import { TabId, UserProgress } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
-import { MagicCanvasScreen } from './components/MagicCanvasScreen';
+import { StarsScreen } from './components/StarsScreen';
 import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 
 type Tab = {
-  id: GameFeatureTab;
+  id: TabId;
   icon: React.ReactNode;
   label: string;
 };
 
 const TABS: Tab[] = [
-  { id: 'home', icon: <Map size={20} />, label: 'World Map' },
-  { id: 'sumi', icon: <Sparkles size={20} />, label: 'Treehouse' },
-  { id: 'games', icon: <Stars size={20} />, label: 'Pop Quiz' },
-  { id: 'magicCanvas', icon: <Pencil size={20} />, label: 'Magic Canvas' },
-  { id: 'floatingPlayground', icon: <Circle size={20} />, label: 'Floating' },
+  { id: 'home', icon: <Home size={20} />, label: 'Learn' },
+  { id: 'sumi', icon: <Sparkles size={20} />, label: 'Sumi AI' },
+  { id: 'games', icon: <Gamepad2 size={20} />, label: 'Games' },
+  { id: 'stars', icon: <Trophy size={20} />, label: 'Progress' },
+  { id: 'floatingPlayground', icon: <span>🎈</span>, label: 'Floating' },
 ];
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<GameFeatureTab>('home');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -31,13 +31,19 @@ const App: React.FC = () => {
     streak: 0,
   });
 
+  // Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('sumiProgress');
     if (saved) {
-      try { setProgress(JSON.parse(saved)); } catch (e) { /* ignore */ }
+      try {
+        setProgress(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load progress:', e);
+      }
     }
   }, []);
 
+  // Save to localStorage
   useEffect(() => {
     localStorage.setItem('sumiProgress', JSON.stringify(progress));
   }, [progress]);
@@ -45,52 +51,97 @@ const App: React.FC = () => {
   const handleWordLearned = (wordId: string) => {
     setProgress(prev => ({
       ...prev,
-      wordsLearned: prev.wordsLearned.includes(wordId) ? prev.wordsLearned : [...prev.wordsLearned, wordId],
-      totalStars: prev.wordsLearned.includes(wordId) ? prev.totalStars : prev.totalStars + 4,
+      wordsLearned: prev.wordsLearned.includes(wordId)
+        ? prev.wordsLearned
+        : [...prev.wordsLearned, wordId],
+      totalStars: prev.totalStars + 5,
     }));
   };
 
   const handleStarsEarned = (points: number) => {
-    setProgress(prev => ({ ...prev, totalStars: prev.totalStars + points }));
+    setProgress(prev => ({
+      ...prev,
+      totalStars: prev.totalStars + points,
+    }));
   };
 
   const handleQuizCompleted = () => {
-    setProgress(prev => ({ ...prev, quizzesCompleted: prev.quizzesCompleted + 1 }));
+    setProgress(prev => ({
+      ...prev,
+      quizzesCompleted: prev.quizzesCompleted + 1,
+    }));
   };
 
   const handleGamePlayed = () => {
-    setProgress(prev => ({ ...prev, gamesPlayed: prev.gamesPlayed + 1 }));
+    setProgress(prev => ({
+      ...prev,
+      gamesPlayed: prev.gamesPlayed + 1,
+    }));
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
+      case 'sumi':
+        return <SumiSensei />;
+      case 'games':
+        return (
+          <GamesScreen
+            onStarsEarned={handleStarsEarned}
+            onQuizCompleted={handleQuizCompleted}
+            onGamePlayed={handleGamePlayed}
+          />
+        );
+      case 'stars':
+        return (
+          <StarsScreen
+            totalStars={progress.totalStars}
+            wordsLearned={progress.wordsLearned}
+            quizzesCompleted={progress.quizzesCompleted}
+            gamesPlayed={progress.gamesPlayed}
+          />
+        );
+      case 'floatingPlayground':
+        return <FloatingPlaygroundScreen />;
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-[#fff8ed] via-[#f4f8ff] to-[#eefdf6]">
-      <div className="sticky top-0 z-20 bg-white/70 backdrop-blur border-b border-white/40">
+    <div className="flex flex-col h-screen bg-base-100">
+      {/* Header with stars */}
+      <div className="sticky top-0 bg-base-100 border-b border-base-300 z-10">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg sm:text-xl font-black text-[#5a3d8e]">🌸 Sumi Play World</h1>
-          <div className="rounded-full bg-yellow-100 text-yellow-700 px-3 py-1 font-bold shadow-sm">⭐ {progress.totalStars}</div>
+          <h1 className="text-xl font-bold">Sumi Sensei</h1>
+          <div className="flex items-center gap-2 bg-base-200 px-3 py-1 rounded-full">
+            <span>⭐</span>
+            <span className="font-bold">{progress.totalStars}</span>
+          </div>
         </div>
       </div>
 
+      {/* Main content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'home' && <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />}
-        {activeTab === 'sumi' && <SumiSensei />}
-        {activeTab === 'games' && <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />}
-        {activeTab === 'magicCanvas' && <MagicCanvasScreen />}
-        {activeTab === 'floatingPlayground' && <FloatingPlaygroundScreen />}
+        {renderContent()}
       </div>
 
-      <div className="sticky bottom-0 bg-white/85 backdrop-blur border-t border-white/60">
-        <div className="grid grid-cols-5">
+      {/* Bottom tab navigation */}
+      <div className="sticky bottom-0 bg-base-100 border-t border-base-300">
+        <div className="flex justify-around">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 rounded-2xl transition-all ${
-                activeTab === tab.id ? 'text-[#6b46c1] bg-purple-50' : 'text-slate-500 hover:text-slate-800'
+              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+                activeTab === tab.id
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-base-content/50 hover:text-base-content'
               }`}
             >
               {tab.icon}
-              <span className="text-xs font-bold">{tab.label}</span>
+              <span className="text-xs font-semibold">{tab.label}</span>
             </button>
           ))}
         </div>
