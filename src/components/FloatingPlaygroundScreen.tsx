@@ -1034,20 +1034,29 @@ const ExperienceBar: React.FC<{ experience: number; experienceToNext: number; le
 // ============================================================================
 
 export const FloatingPlaygroundScreen: React.FC = () => {
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  // ── Kiosk mode (kid-lock) ────────────────────────────────────────
+  const [isKioskMode, setIsKioskMode] = React.useState(false);
+  const [kioskExitPending, setKioskExitPending] = React.useState(false);
 
-  const toggleFullscreen = React.useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
+  const enterKioskMode = React.useCallback(() => {
+    setIsKioskMode(true);
+    setKioskExitPending(false);
+    // Also request native fullscreen where supported
+    (document.documentElement as any).requestFullscreen?.().catch(() => {});
   }, []);
 
-  React.useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+  const handleKioskLockTap = React.useCallback(() => {
+    setKioskExitPending(true);
+  }, []);
+
+  const confirmExitKiosk = React.useCallback(() => {
+    setIsKioskMode(false);
+    setKioskExitPending(false);
+    (document as any).exitFullscreen?.().catch(() => {});
+  }, []);
+
+  const cancelExitKiosk = React.useCallback(() => {
+    setKioskExitPending(false);
   }, []);
 
   // --- State ---
@@ -1066,8 +1075,20 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        // Guard corrupted/NaN numbers from localStorage
+        const safe = (v: any, def: number) =>
+          typeof v === 'number' && isFinite(v) ? v : def;
         return {
           ...parsed,
+          score: safe(parsed.score, 0),
+          totalPops: safe(parsed.totalPops, 0),
+          maxCombo: safe(parsed.maxCombo, 0),
+          bestStreak: safe(parsed.bestStreak, 0),
+          level: safe(parsed.level, 1),
+          experience: safe(parsed.experience, 0),
+          experienceToNext: safe(parsed.experienceToNext, 500),
+          totalStarsEarned: safe(parsed.totalStarsEarned, 0),
+          multiplier: safe(parsed.multiplier, 1),
           isPaused: false,
           showSettings: false,
           showStats: false,
@@ -1751,6 +1772,107 @@ export const FloatingPlaygroundScreen: React.FC = () => {
   // --- Achievement Done Handler (stable ref to avoid resetting toast timer) ---
   const handleAchievementDone = useCallback(() => setAchievementToast(null), []);
 
+
+  // ── Kiosk Mode Render ────────────────────────────────────────────
+  // When active: covers the entire screen (including App chrome), hides all UI,
+  // only shows bubbles. A subtle lock icon in the corner lets parents exit
+  // via a 2-step confirmation.
+  if (isKioskMode) {
+    return (
+      <div
+        className="fixed inset-0 overflow-hidden select-none"
+        style={{ touchAction: 'none', zIndex: 9999 }}
+      >
+        {/* Background */}
+        <AnimatedBackground theme={gameState.theme} gameMode={gameState.gameMode} />
+
+        {/* Full-screen play area — no header / footer padding */}
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+          onClick={handleBackgroundTouch}
+          onTouchStart={handleBackgroundTouch}
+        >
+          {bubbles.map((bubble) => (
+            <BubbleComponent key={bubble.id} bubble={bubble} onPop={handlePopBubble} />
+          ))}
+          {powerUps.map((pu) => (
+            <PowerUpComponent key={pu.id} powerUp={pu} onCollect={handleCollectPowerUp} />
+          ))}
+          {particles.map((p) => (
+            <ParticleComponent key={p.id} particle={p} />
+          ))}
+          {touchRipples.map((r) => (
+            <TouchRippleComponent key={r.id} ripple={r} />
+          ))}
+          {floatingTexts.map((ft) => (
+            <div
+              key={ft.id}
+              className="absolute pointer-events-none font-black"
+              style={{
+                left: ft.x, top: ft.y, color: ft.color, fontSize: ft.size,
+                opacity: ft.opacity, transform: 'translate(-50%, -50%)',
+                zIndex: 300, textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}
+            >
+              {ft.text}
+            </div>
+          ))}
+        </div>
+
+        {/* Achievement / Level-up overlays still work in kiosk */}
+        <AchievementToast achievement={achievementToast} onDone={handleAchievementDone} />
+        <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={() => setShowLevelUp(false)} />
+
+        {/* Subtle lock icon — parent taps it to request exit */}
+        <button
+          onClick={handleKioskLockTap}
+          className="absolute bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all"
+          style={{
+            zIndex: 9998,
+            background: 'rgba(0,0,0,0.15)',
+            backdropFilter: 'blur(4px)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          aria-label="Exit Kiosk Mode"
+        >
+          <span style={{ fontSize: 26, opacity: 0.45 }}>🔒</span>
+        </button>
+
+        {/* 2-factor exit: confirmation dialog */}
+        {kioskExitPending && (
+          <div
+            className="absolute inset-0 flex items-center justify-center p-6 bg-black/60"
+            style={{ zIndex: 10000 }}
+          >
+            <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl">
+              <div className="text-5xl mb-4">🔓</div>
+              <h2 className="text-2xl font-black text-gray-800 mb-2">Exit Kiosk Mode?</h2>
+              <p className="text-gray-500 mb-8 text-sm leading-relaxed">
+                This will show all app controls again.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelExitKiosk}
+                  className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-black text-lg active:scale-95 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmExitKiosk}
+                  className="flex-1 py-4 rounded-2xl font-black text-lg text-white shadow-lg active:scale-95 transition-all"
+                  style={{ background: 'linear-gradient(135deg, #f56565, #ed64a6)' }}
+                >
+                  OK, Exit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // --- Render ---
   return (
     <div className="h-full w-full relative overflow-hidden select-none" style={{ touchAction: 'none' }}>
@@ -1808,11 +1930,11 @@ export const FloatingPlaygroundScreen: React.FC = () => {
                 <span className="text-lg">⚙️</span>
               </button>
               <button
-                onClick={toggleFullscreen}
+                onClick={enterKioskMode}
                 className="p-2 rounded-full bg-green-100 hover:bg-green-200 active:scale-90 transition-all"
-                title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+                title="Kiosk Mode — Kid Lock"
               >
-                <span className="text-lg">{isFullscreen ? '⛶' : '⛶'}</span>
+                <span className="text-lg">🔒</span>
               </button>
             </div>
           </div>
