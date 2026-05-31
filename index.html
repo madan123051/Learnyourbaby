@@ -2,9 +2,25 @@
 <html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <!-- viewport-fit=cover: fills notch/corners on iPad; no user-scalable for app feel -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Sumi Sensei 🌸 - Trilingual Learning App</title>
+    <title>Sumi Sensei 🌸</title>
     <meta name="description" content="Learn English, Nepali and Japanese with Sumi Sensei! Fun trilingual app for kids." />
+
+    <!-- PWA / Add to Home Screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Sumi Sensei" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- App icon (add your icon at public/icons/icon-192.png) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png" />
   </head>
   <body>
     <div id="root"></div>
