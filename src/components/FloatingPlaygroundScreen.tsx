@@ -419,7 +419,13 @@ const createBubble = (
     y: overrideY ?? randomRange(12, 82),
     dx: (Math.random() - 0.5) * speed * 2,
     dy: (Math.random() - 0.5) * speed * 2,
-    size: Math.floor(randomRange(46, 72)),
+    size: Math.floor(
+      difficulty === 'toddler' ? randomRange(110, 150) :
+      difficulty === 'easy'    ? randomRange(80, 110)  :
+      difficulty === 'medium'  ? randomRange(60, 85)   :
+      difficulty === 'hard'    ? randomRange(42, 68)   :
+                                 randomRange(32, 52)
+    ),
     rotation: Math.random() * 360,
     rotationSpeed: (Math.random() - 0.5) * 3,
     scale: 1,
@@ -510,39 +516,104 @@ const POWER_UP_NAMES: Record<PowerUpType, string> = {
 
 // ---------- Animated Background ----------
 
+// Theme-specific large background decoration emojis
+const THEME_BG_EMOJIS: Record<ThemeType, string[]> = {
+  sky:     ['☁️', '🌤️', '🌈', '✈️', '🦋', '🌸'],
+  ocean:   ['🐠', '🐬', '🦈', '🐙', '🌊', '🐚'],
+  forest:  ['🌲', '🦋', '🍃', '🦜', '🍄', '🌺'],
+  space:   ['⭐', '🚀', '🌙', '🪐', '💫', '👾'],
+  candy:   ['🍭', '🍬', '🧁', '🍩', '🍦', '🎀'],
+  sunset:  ['🌅', '🌴', '🦩', '🌺', '🔥', '✨'],
+  arctic:  ['❄️', '🐧', '⛄', '🌨️', '🦭', '🏔️'],
+  volcano: ['🌋', '🔥', '💎', '🦖', '⚡', '🌑'],
+};
+
+// Stable random data so background doesn't shimmer on each re-render
+const BG_ORBS = Array.from({ length: 18 }, (_, i) => ({
+  key: i,
+  left: (i * 37 + 11) % 100,
+  top: (i * 53 + 7) % 100,
+  size: 60 + (i * 29) % 120,
+  delay: (i * 0.4) % 4,
+  dur: 4 + (i * 0.7) % 5,
+}));
+
+const BG_DECOS = Array.from({ length: 12 }, (_, i) => ({
+  key: i,
+  left: (i * 43 + 5) % 97,
+  top: (i * 61 + 13) % 90,
+  delay: (i * 0.5) % 4,
+  dur: 3 + (i * 0.8) % 5,
+  scale: 1.2 + (i * 0.15) % 1.2,
+  emojiIdx: i % 6,
+}));
+
 const AnimatedBackground: React.FC<{ theme: ThemeType; gameMode: GameMode }> = React.memo(({ theme }) => {
   const themeData = THEMES[theme];
+  const decoEmojis = THEME_BG_EMOJIS[theme];
+
   return (
     <div className={`absolute inset-0 bg-gradient-to-b ${themeData.bg} transition-all duration-1000`}>
+      {/* --- Layer 1: large glowing orbs for 3-D depth --- */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 30 }).map((_, i) => (
+        {BG_ORBS.map((o) => (
           <div
-            key={`bg-star-${i}`}
-            className="absolute rounded-full opacity-20 animate-pulse"
+            key={`orb-${o.key}`}
+            className="absolute rounded-full animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: randomRange(2, 8),
-              height: randomRange(2, 8),
-              backgroundColor: themeData.accent,
-              animationDelay: `${Math.random() * 4}s`,
-              animationDuration: `${randomRange(2, 5)}s`,
+              left: `${o.left}%`,
+              top: `${o.top}%`,
+              width: o.size,
+              height: o.size,
+              background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35), ${themeData.accent}55, ${themeData.accent}18)`,
+              boxShadow: `0 0 ${o.size * 0.6}px ${themeData.glow}`,
+              animationDelay: `${o.delay}s`,
+              animationDuration: `${o.dur}s`,
+              transform: 'translate(-50%,-50%)',
             }}
           />
         ))}
-        {Array.from({ length: 8 }).map((_, i) => (
+      </div>
+
+      {/* --- Layer 2: big themed emoji decorations with 3-D float --- */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {BG_DECOS.map((d) => (
           <div
-            key={`bg-cloud-${i}`}
-            className="absolute text-3xl md:text-4xl opacity-10 animate-bounce"
+            key={`deco-${d.key}`}
+            className="absolute select-none animate-bounce"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${randomRange(3, 7)}s`,
+              left: `${d.left}%`,
+              top: `${d.top}%`,
+              fontSize: `${3.5 * d.scale}rem`,
+              opacity: 0.28,
+              animationDelay: `${d.delay}s`,
+              animationDuration: `${d.dur}s`,
+              filter: `drop-shadow(0 6px 12px ${themeData.glow})`,
+              transform: `translate(-50%,-50%) scale(${d.scale})`,
             }}
           >
-            {theme === 'space' ? '✨' : theme === 'ocean' ? '🐠' : theme === 'forest' ? '🍃' : theme === 'candy' ? '🍬' : theme === 'sunset' ? '🌅' : theme === 'arctic' ? '❄️' : theme === 'volcano' ? '🔥' : '☁️'}
+            {decoEmojis[d.emojiIdx]}
           </div>
+        ))}
+      </div>
+
+      {/* --- Layer 3: shimmer / sparkle dots --- */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <div
+            key={`spark-${i}`}
+            className="absolute rounded-full animate-ping"
+            style={{
+              left: `${(i * 73 + 3) % 100}%`,
+              top: `${(i * 61 + 9) % 100}%`,
+              width: 4 + (i % 6),
+              height: 4 + (i % 6),
+              backgroundColor: themeData.accent,
+              opacity: 0.25,
+              animationDelay: `${(i * 0.3) % 5}s`,
+              animationDuration: `${2 + (i * 0.4) % 3}s`,
+            }}
+          />
         ))}
       </div>
     </div>
@@ -951,7 +1022,7 @@ const LevelUpAnimation: React.FC<{ level: number; show: boolean; onDone: () => v
   if (!show) return null;
 
   return (
-    <div className="absolute inset-0 z-[550] flex items-center justify-center pointer-events-none">
+    <div className="absolute inset-0 z-[550] flex items-center justify-center pointer-events-auto cursor-pointer" onClick={onDone}>
       <div className="animate-bounce">
         <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl px-12 py-8 shadow-2xl border-4 border-white/30 text-center">
           <div className="text-6xl mb-2">🎉</div>
@@ -1772,6 +1843,9 @@ export const FloatingPlaygroundScreen: React.FC = () => {
   // --- Achievement Done Handler (stable ref to avoid resetting toast timer) ---
   const handleAchievementDone = useCallback(() => setAchievementToast(null), []);
 
+  // --- Level Up Done Handler (stable ref so the 2500ms timer never gets reset mid-flight) ---
+  const handleLevelUpDone = useCallback(() => setShowLevelUp(false), []);
+
 
   // ── Kiosk Mode Render ────────────────────────────────────────────
   // When active: covers the entire screen (including App chrome), hides all UI,
@@ -1822,7 +1896,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
 
         {/* Achievement / Level-up overlays still work in kiosk */}
         <AchievementToast achievement={achievementToast} onDone={handleAchievementDone} />
-        <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={() => setShowLevelUp(false)} />
+        <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={handleLevelUpDone} />
 
         {/* Subtle lock icon — parent taps it to request exit */}
         <button
@@ -2084,7 +2158,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       <AchievementToast achievement={achievementToast} onDone={handleAchievementDone} />
 
       {/* Level Up Animation */}
-      <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={() => setShowLevelUp(false)} />
+      <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={handleLevelUpDone} />
 
       {/* Pause Overlay */}
       {gameState.isPaused && !gameState.showSettings && !gameState.showStats && !gameState.showAchievements && (
