@@ -37,7 +37,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const saved = localStorage.getItem('sumiProgress');
     if (saved) {
-      try { setProgress(JSON.parse(saved)); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(saved);
+        // Guard NaN / corrupted numbers
+        if (parsed && !isFinite(parsed.totalStars)) parsed.totalStars = 0;
+        setProgress(parsed);
+      } catch (e) { console.error(e); }
     }
   }, []);
 
