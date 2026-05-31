@@ -919,12 +919,13 @@ const AchievementToast: React.FC<{ achievement: Achievement | null; onDone: () =
       const timer = setTimeout(onDone, 3500);
       return () => clearTimeout(timer);
     }
-  }, [achievement, onDone]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [achievement]);
 
   if (!achievement) return null;
 
   return (
-    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[600] animate-bounce">
+    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[600] animate-bounce cursor-pointer" onClick={onDone}>
       <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl px-6 py-4 shadow-2xl flex items-center gap-3 border-4 border-yellow-300">
         <span className="text-4xl">{achievement.emoji}</span>
         <div>
@@ -1747,6 +1748,9 @@ export const FloatingPlaygroundScreen: React.FC = () => {
     vibrate([30, 20, 30, 20, 50], gameState.vibrationEnabled);
   }, [bubbles, gameState.vibrationEnabled]);
 
+  // --- Achievement Done Handler (stable ref to avoid resetting toast timer) ---
+  const handleAchievementDone = useCallback(() => setAchievementToast(null), []);
+
   // --- Render ---
   return (
     <div className="h-full w-full relative overflow-hidden select-none" style={{ touchAction: 'none' }}>
@@ -1823,7 +1827,8 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       {/* Main Play Area */}
       <div
         ref={containerRef}
-        className="absolute inset-0 pt-[72px] md:pt-[80px] pb-[72px] md:pb-[80px]"
+        className="absolute inset-0 pt-[72px] md:pt-[80px]"
+        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
         onClick={handleBackgroundTouch}
         onTouchStart={handleBackgroundTouch}
       >
@@ -1875,7 +1880,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       <ActivePowerUpDisplay activePowerUps={activePowerUps} />
 
       {/* Footer Controls */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg">
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="px-2 py-2 md:px-6 md:py-3">
           <div className="flex items-center justify-center gap-1.5 md:gap-3 flex-wrap">
             <button
@@ -1954,7 +1959,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       )}
 
       {/* Achievement Toast */}
-      <AchievementToast achievement={achievementToast} onDone={() => setAchievementToast(null)} />
+      <AchievementToast achievement={achievementToast} onDone={handleAchievementDone} />
 
       {/* Level Up Animation */}
       <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={() => setShowLevelUp(false)} />

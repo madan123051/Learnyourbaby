@@ -110,7 +110,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-base-100">
+    <div className="flex flex-col h-[100dvh] bg-base-100">
       {/* Header with stars */}
       <div className="sticky top-0 bg-base-100 border-b border-base-300 z-10">
         <div className="flex items-center justify-between px-4 py-3">
@@ -128,7 +128,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Bottom tab navigation */}
-      <div className="sticky bottom-0 bg-base-100 border-t border-base-300">
+      <div className="sticky bottom-0 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around">
           {TABS.map(tab => (
             <button
