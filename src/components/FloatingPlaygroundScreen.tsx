@@ -286,6 +286,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
 const generateUniqueId = (): number => Math.floor(Math.random() * 1000000000) + Date.now();
 
 const formatScore = (score: number): string => {
+  if (!score || isNaN(score)) return '0';
   if (score >= 1000000) return (score / 1000000).toFixed(1) + 'M';
   if (score >= 1000) return (score / 1000).toFixed(1) + 'K';
   return score.toString();
@@ -1104,7 +1105,17 @@ const ExperienceBar: React.FC<{ experience: number; experienceToNext: number; le
 // MAIN COMPONENT
 // ============================================================================
 
-export const FloatingPlaygroundScreen: React.FC = () => {
+interface FPSProps {
+  kioskMode?: boolean;
+  onEnterKiosk?: () => void;
+  onExitKiosk?: () => void;
+}
+
+export const FloatingPlaygroundScreen: React.FC<FPSProps> = ({
+  kioskMode = false,
+  onEnterKiosk,
+  onExitKiosk,
+}) => {
   // ── Kiosk mode (kid-lock) ────────────────────────────────────────
   const [isKioskMode, setIsKioskMode] = React.useState(false);
   const [kioskExitPending, setKioskExitPending] = React.useState(false);
@@ -1140,6 +1151,7 @@ export const FloatingPlaygroundScreen: React.FC = () => {
   const [achievementToast, setAchievementToast] = useState<Achievement | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(1);
+  const [exitConfirm, setExitConfirm] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem('floatingPlaygroundState');
@@ -1953,8 +1965,8 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       {/* Animated Background */}
       <AnimatedBackground theme={gameState.theme} gameMode={gameState.gameMode} />
 
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg">
+      {/* Header — hidden in kiosk mode */}
+      <div className={`absolute top-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg${kioskMode ? ' hidden' : ''}`}>
         <div className="px-3 py-2 md:px-6 md:py-3">
           <div className="flex items-center justify-between gap-2">
             {/* Title */}
@@ -2023,8 +2035,8 @@ export const FloatingPlaygroundScreen: React.FC = () => {
       {/* Main Play Area */}
       <div
         ref={containerRef}
-        className="absolute inset-0 pt-[72px] md:pt-[80px]"
-        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
+        className={`absolute inset-0${kioskMode ? '' : ' pt-[72px] md:pt-[80px]'}`}
+        style={kioskMode ? {} : { paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
         onClick={handleBackgroundTouch}
         onTouchStart={handleBackgroundTouch}
       >
@@ -2069,14 +2081,14 @@ export const FloatingPlaygroundScreen: React.FC = () => {
         ))}
       </div>
 
-      {/* Combo Indicator */}
-      <ComboIndicator combo={gameState.combo} comboTimer={gameState.comboTimer} />
+      {/* Combo Indicator — hidden in kiosk */}
+      {!kioskMode && <ComboIndicator combo={gameState.combo} comboTimer={gameState.comboTimer} />}
 
-      {/* Active Power-Ups Display */}
-      <ActivePowerUpDisplay activePowerUps={activePowerUps} />
+      {/* Active Power-Ups Display — hidden in kiosk */}
+      {!kioskMode && <ActivePowerUpDisplay activePowerUps={activePowerUps} />}
 
-      {/* Footer Controls */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* Footer Controls — hidden in kiosk */}
+      <div className={`absolute bottom-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-md shadow-lg${kioskMode ? ' hidden' : ''}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="px-2 py-2 md:px-6 md:py-3">
           <div className="flex items-center justify-center gap-1.5 md:gap-3 flex-wrap">
             <button
@@ -2159,6 +2171,48 @@ export const FloatingPlaygroundScreen: React.FC = () => {
 
       {/* Level Up Animation */}
       <LevelUpAnimation level={newLevel} show={showLevelUp} onDone={handleLevelUpDone} />
+      {/* ── Kiosk mode: 2-factor exit ── */}
+      {kioskMode && (
+        <>
+          {!exitConfirm && (
+            <button
+              className="absolute top-3 right-3 z-[700] opacity-25 hover:opacity-70 active:opacity-100 transition-opacity p-2 rounded-full bg-black/20 touch-manipulation"
+              onTouchStart={(e) => { e.stopPropagation(); setExitConfirm(true); }}
+              onClick={(e) => { e.stopPropagation(); setExitConfirm(true); }}
+              aria-label="Exit kiosk mode"
+            >
+              <span className="text-3xl select-none">🔒</span>
+            </button>
+          )}
+          {exitConfirm && (
+            <div
+              className="absolute inset-0 z-[800] bg-black/70 flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white rounded-3xl p-8 mx-8 text-center shadow-2xl max-w-xs w-full border-4 border-purple-200">
+                <div className="text-7xl mb-4">🔒</div>
+                <h2 className="text-2xl font-black text-gray-800 mb-2">Leave Playground?</h2>
+                <p className="text-gray-500 text-base mb-8">Tap <strong>OK</strong> to go back to the menu</p>
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-black text-xl active:scale-95 transition-all"
+                    onClick={() => setExitConfirm(false)}
+                  >
+                    ✕ No
+                  </button>
+                  <button
+                    className="flex-1 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl font-black text-xl active:scale-95 transition-all shadow-lg"
+                    onClick={() => { setExitConfirm(false); if (onExitKiosk) onExitKiosk(); }}
+                  >
+                    ✓ OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Pause Overlay */}
       {gameState.isPaused && !gameState.showSettings && !gameState.showStats && !gameState.showAchievements && (

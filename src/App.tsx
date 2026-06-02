@@ -25,6 +25,7 @@ const TABS: Tab[] = [
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [isKioskMode, setIsKioskMode] = useState(false);
   const isPad = useIsPad();
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
@@ -39,9 +40,11 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Guard NaN / corrupted numbers
-        if (parsed && !isFinite(parsed.totalStars)) parsed.totalStars = 0;
-        setProgress(parsed);
+        // Guard against NaN from corrupted localStorage data
+        setProgress({
+          ...parsed,
+          totalStars: !parsed.totalStars || isNaN(parsed.totalStars) ? 0 : parsed.totalStars,
+        });
       } catch (e) { console.error(e); }
     }
   }, []);
@@ -62,18 +65,35 @@ const App: React.FC = () => {
   const handleQuizCompleted = ()            => setProgress(p => ({ ...p, quizzesCompleted: p.quizzesCompleted + 1 }));
   const handleGamePlayed    = ()            => setProgress(p => ({ ...p, gamesPlayed: p.gamesPlayed + 1 }));
 
-  const renderContent = () => {
+  const renderContent = (onEnterKiosk?: () => void) => {
     switch (activeTab) {
       case 'home':               return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
       case 'sumi':               return <SumiSensei />;
       case 'games':              return <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />;
       case 'stars':              return <StarsScreen totalStars={progress.totalStars} wordsLearned={progress.wordsLearned} quizzesCompleted={progress.quizzesCompleted} gamesPlayed={progress.gamesPlayed} />;
-      case 'floatingPlayground': return <FloatingPlaygroundScreen />;
+      case 'floatingPlayground': return <FloatingPlaygroundScreen onEnterKiosk={onEnterKiosk} />;
       default:                   return null;
     }
   };
 
   const activeTabInfo = TABS.find(t => t.id === activeTab);
+  const safeStars = !progress.totalStars || isNaN(progress.totalStars) ? 0 : progress.totalStars;
+
+  // ─────────────────────────────────────────────
+  // KIOSK MODE: full-bleed playground, zero chrome
+  // Enter: tap ⛶ button inside Floating Playground
+  // Exit:  tap 🔒 (top-right, semi-transparent) → confirm OK
+  // ─────────────────────────────────────────────
+  if (isKioskMode) {
+    return (
+      <div className="h-[100dvh] w-full overflow-hidden bg-black">
+        <FloatingPlaygroundScreen
+          kioskMode={true}
+          onExitKiosk={() => setIsKioskMode(false)}
+        />
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────
   // iPad Layout: Sidebar navigation
@@ -102,7 +122,7 @@ const App: React.FC = () => {
             <span className="text-2xl">⭐</span>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-amber-600/70 font-semibold">Stars earned</p>
-              <p className="text-2xl font-extrabold text-amber-600 leading-none">{progress.totalStars}</p>
+              <p className="text-2xl font-extrabold text-amber-600 leading-none">{safeStars}</p>
             </div>
           </div>
 
@@ -146,7 +166,7 @@ const App: React.FC = () => {
 
           {/* Scrollable page content */}
           <div className="flex-1 overflow-hidden">
-            {renderContent()}
+            {renderContent(() => setIsKioskMode(true))}
           </div>
         </div>
 
@@ -164,13 +184,13 @@ const App: React.FC = () => {
           <h1 className="text-xl font-bold">Sumi Sensei</h1>
           <div className="flex items-center gap-2 bg-base-200 px-3 py-1 rounded-full">
             <span>⭐</span>
-            <span className="font-bold">{progress.totalStars}</span>
+            <span className="font-bold">{safeStars}</span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {renderContent()}
+        {renderContent(() => setIsKioskMode(true))}
       </div>
 
       <div className="sticky bottom-0 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
