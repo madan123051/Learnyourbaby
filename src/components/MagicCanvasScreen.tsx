@@ -40,9 +40,18 @@ export const MagicCanvasScreen: React.FC = () => {
     });
   };
 
+  // Scale CSS pointer position → canvas pixel space
+  // Canvas has a fixed resolution (width/height attrs) but is displayed at CSS w-full.
+  // Without scaling, strokes appear offset from the finger.
   const pointFromEvent = (event: React.PointerEvent<HTMLCanvasElement>): Point => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+    };
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
