@@ -61,4 +61,4 @@ export interface UserProgress {
 }
 
 // ===== Tab =====
-export type TabId = 'home' | 'sumi' | 'games' | 'stars' | 'floatingPlayground';
+export type TabId = 'home' | 'sumi' | 'games' | 'stars' | 'floatingPlayground' | 'magicCanvas';

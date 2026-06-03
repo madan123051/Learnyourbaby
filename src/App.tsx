@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Sparkles, Gamepad2, Trophy } from 'lucide-react';
+import { Home, Sparkles, Gamepad2, Trophy, Brush } from 'lucide-react';
 import { TabId, UserProgress } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { SumiSensei } from './components/SumiSensei';
 import { GamesScreen } from './components/GamesScreen';
 import { StarsScreen } from './components/StarsScreen';
 import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
+import { MagicCanvasScreen } from './components/MagicCanvasScreen';
 import { useIsPad } from './hooks/useIsPad';
 
 type Tab = {
@@ -16,10 +17,11 @@ type Tab = {
 };
 
 const TABS: Tab[] = [
-  { id: 'home',               icon: <Home size={22} />,     label: 'Learn',    emoji: '📚' },
-  { id: 'sumi',               icon: <Sparkles size={22} />, label: 'Sumi AI',  emoji: '✨' },
-  { id: 'games',              icon: <Gamepad2 size={22} />, label: 'Games',    emoji: '🎮' },
-  { id: 'stars',              icon: <Trophy size={22} />,   label: 'Progress', emoji: '🏆' },
+  { id: 'home',               icon: <Home size={22} />,        label: 'Learn',    emoji: '📚' },
+  { id: 'sumi',               icon: <Sparkles size={22} />,    label: 'Sumi AI',  emoji: '✨' },
+  { id: 'games',              icon: <Gamepad2 size={22} />,    label: 'Games',    emoji: '🎮' },
+  { id: 'magicCanvas',        icon: <Brush size={22} />,       label: 'Canvas',   emoji: '🎨' },
+  { id: 'stars',              icon: <Trophy size={22} />,      label: 'Progress', emoji: '🏆' },
   { id: 'floatingPlayground', icon: <span className="text-lg">🎈</span>, label: 'Floating', emoji: '🎈' },
 ];
 
@@ -40,7 +42,6 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Guard against NaN from corrupted localStorage data
         setProgress({
           ...parsed,
           totalStars: !parsed.totalStars || isNaN(parsed.totalStars) ? 0 : parsed.totalStars,
@@ -61,7 +62,7 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleStarsEarned  = (pts: number) => setProgress(p => ({ ...p, totalStars: p.totalStars + pts }));
+  const handleStarsEarned   = (pts: number) => setProgress(p => ({ ...p, totalStars: p.totalStars + pts }));
   const handleQuizCompleted = ()            => setProgress(p => ({ ...p, quizzesCompleted: p.quizzesCompleted + 1 }));
   const handleGamePlayed    = ()            => setProgress(p => ({ ...p, gamesPlayed: p.gamesPlayed + 1 }));
 
@@ -70,6 +71,7 @@ const App: React.FC = () => {
       case 'home':               return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
       case 'sumi':               return <SumiSensei />;
       case 'games':              return <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />;
+      case 'magicCanvas':        return <MagicCanvasScreen />;
       case 'stars':              return <StarsScreen totalStars={progress.totalStars} wordsLearned={progress.wordsLearned} quizzesCompleted={progress.quizzesCompleted} gamesPlayed={progress.gamesPlayed} />;
       case 'floatingPlayground': return <FloatingPlaygroundScreen onEnterKiosk={onEnterKiosk} />;
       default:                   return null;
@@ -81,8 +83,6 @@ const App: React.FC = () => {
 
   // ─────────────────────────────────────────────
   // KIOSK MODE: full-bleed playground, zero chrome
-  // Enter: tap ⛶ button inside Floating Playground
-  // Exit:  tap 🔒 (top-right, semi-transparent) → confirm OK
   // ─────────────────────────────────────────────
   if (isKioskMode) {
     return (
