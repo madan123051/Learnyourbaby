@@ -71,7 +71,7 @@ const App: React.FC = () => {
       case 'home':               return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
       case 'sumi':               return <SumiSensei />;
       case 'games':              return <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />;
-      case 'magicCanvas':        return <MagicCanvasScreen />;
+      case 'magicCanvas':        return null; // rendered as root overlay
       case 'stars':              return <StarsScreen totalStars={progress.totalStars} wordsLearned={progress.wordsLearned} quizzesCompleted={progress.quizzesCompleted} gamesPlayed={progress.gamesPlayed} />;
       case 'floatingPlayground': return <FloatingPlaygroundScreen onEnterKiosk={onEnterKiosk} />;
       default:                   return null;
@@ -82,6 +82,15 @@ const App: React.FC = () => {
   const safeStars = !progress.totalStars || isNaN(progress.totalStars) ? 0 : progress.totalStars;
 
   // ─────────────────────────────────────────────
+  // MAGIC CANVAS: full-bleed drawing overlay
+  // ─────────────────────────────────────────────
+  if (activeTab === 'magicCanvas') {
+    return (
+      <MagicCanvasScreen onClose={() => setActiveTab('home')} />
+    );
+  }
+
+    // ─────────────────────────────────────────────
   // KIOSK MODE: full-bleed playground, zero chrome
   // ─────────────────────────────────────────────
   if (isKioskMode) {
