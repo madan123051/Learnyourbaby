@@ -99,6 +99,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   const [completed,  setCompleted]  = useState<Set<number>>(new Set());
   const [confetti,   setConfetti]   = useState<ConfettiPiece[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [hasDrawn,   setHasDrawn]   = useState(false); // track if child actually drew something
 
   const brushSize     = BRUSH_SIZES[brushIdx].size;
   const letters       = letterMode === 'upper' ? UPPER_LETTERS
@@ -149,6 +150,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     if (!ctx) return;
     clearCanvas(ctx, canvas);
     setHistory([]);
+    setHasDrawn(false); // reset drawing flag for each new letter
     setTick(t => t + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letterMode, letterIdx]);
@@ -201,6 +203,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       e.currentTarget.setPointerCapture(e.pointerId);
       saveSnapshot();
+      if (!isEraser) setHasDrawn(true); // child is drawing — unlock Done button
       const pt = getPoint(e);
       lastPt.current    = pt;
       isDrawing.current = true;
@@ -622,21 +625,41 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
 
         {/* ── "Done ✓ Next" floating button ──────────────────── */}
         {isLetterMode && letterIdx <= 25 && !showCelebration && (
-          <button
-            onClick={markDoneAndNext}
-            className="absolute bottom-4 right-4 flex items-center gap-2 px-5 py-3.5 rounded-2xl font-black text-white text-base active:scale-95 transition-all"
-            style={{
-              zIndex:     3,
-              background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 5) % 26]})`,
-              boxShadow:  `0 6px 25px ${letterColor}50`,
-              animation:  'mc-float 2s ease-in-out infinite',
-            }}
-          >
-            {letterIdx === 25
-              ? <>🎉 Finish!</>
-              : <>Done ✓ Next {letters[letterIdx + 1]} →</>
-            }
-          </button>
+          <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1" style={{ zIndex: 3 }}>
+            {/* Hint label when not drawn yet */}
+            {!hasDrawn && (
+              <span
+                className="text-xs font-bold px-3 py-1 rounded-full"
+                style={{
+                  background: `${letterColor}20`,
+                  color: letterColor,
+                  animation: 'mc-pulse 1.5s ease-in-out infinite',
+                }}
+              >
+                ✏️ Pehle likho!
+              </span>
+            )}
+            <button
+              onClick={hasDrawn ? markDoneAndNext : undefined}
+              disabled={!hasDrawn}
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl font-black text-white text-base transition-all"
+              style={{
+                background:  hasDrawn
+                  ? `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 5) % 26]})`
+                  : 'rgba(180,180,180,0.5)',
+                boxShadow:   hasDrawn ? `0 6px 25px ${letterColor}50` : 'none',
+                animation:   hasDrawn ? 'mc-float 2s ease-in-out infinite' : 'none',
+                color:       hasDrawn ? '#fff' : 'rgba(100,100,100,0.6)',
+                cursor:      hasDrawn ? 'pointer' : 'not-allowed',
+                transform:   hasDrawn ? undefined : 'scale(0.95)',
+              }}
+            >
+              {letterIdx === 25
+                ? <>🎉 Finish!</>
+                : <>Done ✓ Next {letters[letterIdx + 1]} →</>
+              }
+            </button>
+          </div>
         )}
 
         {/* ── Current letter indicator (big, top-left) ────────── */}
