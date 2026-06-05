@@ -8,27 +8,18 @@ import { StarsScreen } from './components/StarsScreen';
 import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 import { MagicCanvasScreen } from './components/MagicCanvasScreen';
 import { useIsPad } from './hooks/useIsPad';
+import { LanguageProvider, useLang } from './context/LanguageContext';
+import { Lang, LANG_FLAGS, LANG_LABELS } from './i18n';
 
-type Tab = {
-  id: TabId;
-  icon: React.ReactNode;
-  label: string;
-  emoji: string;
-};
+const LANGS: Lang[] = ['en', 'ja', 'ne'];
 
-const TABS: Tab[] = [
-  { id: 'home',               icon: <Home size={22} />,        label: 'Learn',    emoji: '📚' },
-  { id: 'sumi',               icon: <Sparkles size={22} />,    label: 'Sumi AI',  emoji: '✨' },
-  { id: 'games',              icon: <Gamepad2 size={22} />,    label: 'Games',    emoji: '🎮' },
-  { id: 'magicCanvas',        icon: <Brush size={22} />,       label: 'Canvas',   emoji: '🎨' },
-  { id: 'stars',              icon: <Trophy size={22} />,      label: 'Progress', emoji: '🏆' },
-  { id: 'floatingPlayground', icon: <span className="text-lg">🎈</span>, label: 'Floating', emoji: '🎈' },
-];
-
-const App: React.FC = () => {
+// ── Inner app — can use useLang() ──────────────────────────────────────────
+const AppInner: React.FC = () => {
+  const { lang, setLang, t } = useLang();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [isKioskMode, setIsKioskMode] = useState(false);
   const isPad = useIsPad();
+
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -36,6 +27,16 @@ const App: React.FC = () => {
     gamesPlayed: 0,
     streak: 0,
   });
+
+  type Tab = { id: TabId; icon: React.ReactNode; label: string; emoji: string };
+  const TABS: Tab[] = [
+    { id: 'home',               icon: <Home size={22} />,                  label: t.tabLearn,    emoji: '📚' },
+    { id: 'sumi',               icon: <Sparkles size={22} />,              label: t.tabSumi,     emoji: '✨' },
+    { id: 'games',              icon: <Gamepad2 size={22} />,              label: t.tabGames,    emoji: '🎮' },
+    { id: 'magicCanvas',        icon: <Brush size={22} />,                 label: t.tabCanvas,   emoji: '🎨' },
+    { id: 'stars',              icon: <Trophy size={22} />,                label: t.tabProgress, emoji: '🏆' },
+    { id: 'floatingPlayground', icon: <span className="text-lg">🎈</span>, label: t.tabFloating, emoji: '🎈' },
+  ];
 
   useEffect(() => {
     const saved = localStorage.getItem('sumiProgress');
@@ -71,26 +72,33 @@ const App: React.FC = () => {
       case 'home':               return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
       case 'sumi':               return <SumiSensei />;
       case 'games':              return <GamesScreen onStarsEarned={handleStarsEarned} onQuizCompleted={handleQuizCompleted} onGamePlayed={handleGamePlayed} />;
-      case 'magicCanvas':        return null; // rendered as root overlay
+      case 'magicCanvas':        return <MagicCanvasScreen />;
       case 'stars':              return <StarsScreen totalStars={progress.totalStars} wordsLearned={progress.wordsLearned} quizzesCompleted={progress.quizzesCompleted} gamesPlayed={progress.gamesPlayed} />;
       case 'floatingPlayground': return <FloatingPlaygroundScreen onEnterKiosk={onEnterKiosk} />;
       default:                   return null;
     }
   };
 
-  const activeTabInfo = TABS.find(t => t.id === activeTab);
+  const activeTabInfo = TABS.find(tab => tab.id === activeTab);
   const safeStars = !progress.totalStars || isNaN(progress.totalStars) ? 0 : progress.totalStars;
 
-  // ─────────────────────────────────────────────
-  // MAGIC CANVAS: full-bleed drawing overlay
-  // ─────────────────────────────────────────────
-  if (activeTab === 'magicCanvas') {
-    return (
-      <MagicCanvasScreen onClose={() => setActiveTab('home')} />
-    );
-  }
+  // Reusable language switcher
+  const LangSwitcher = () => (
+    <div className="flex items-center gap-1">
+      {LANGS.map(l => (
+        <button
+          key={l}
+          onClick={() => setLang(l)}
+          className={`btn btn-xs rounded-full gap-0.5 ${lang === l ? 'btn-primary' : 'btn-ghost opacity-50 hover:opacity-100'}`}
+        >
+          <span>{LANG_FLAGS[l]}</span>
+          <span className="text-[10px] font-bold">{LANG_LABELS[l]}</span>
+        </button>
+      ))}
+    </div>
+  );
 
-    // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // KIOSK MODE: full-bleed playground, zero chrome
   // ─────────────────────────────────────────────
   if (isKioskMode) {
@@ -120,17 +128,20 @@ const App: React.FC = () => {
             paddingLeft: 'env(safe-area-inset-left)',
           }}
         >
-          {/* App title */}
-          <div className="px-5 pt-6 pb-5 border-b border-base-300">
-            <h1 className="text-2xl font-extrabold tracking-tight">Sumi Sensei 🌸</h1>
-            <p className="text-xs text-base-content/40 mt-0.5">Trilingual Learning</p>
+          {/* App title + language switcher */}
+          <div className="px-5 pt-6 pb-4 border-b border-base-300">
+            <h1 className="text-2xl font-extrabold tracking-tight">{t.appTitle}</h1>
+            <p className="text-xs text-base-content/40 mt-0.5">{t.appSubtitle}</p>
+            <div className="mt-3">
+              <LangSwitcher />
+            </div>
           </div>
 
           {/* Stars badge */}
           <div className="mx-4 mt-5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
             <span className="text-2xl">⭐</span>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-amber-600/70 font-semibold">Stars earned</p>
+              <p className="text-[10px] uppercase tracking-wide text-amber-600/70 font-semibold">{t.starsEarned}</p>
               <p className="text-2xl font-extrabold text-amber-600 leading-none">{safeStars}</p>
             </div>
           </div>
@@ -155,7 +166,7 @@ const App: React.FC = () => {
 
           {/* Footer */}
           <div className="px-5 py-4 border-t border-base-300">
-            <p className="text-[11px] text-base-content/25 text-center">Made with ❤️ for Sumi</p>
+            <p className="text-[11px] text-base-content/25 text-center">{t.madeWith}</p>
           </div>
         </div>
 
@@ -167,13 +178,10 @@ const App: React.FC = () => {
             paddingRight: 'env(safe-area-inset-right)',
           }}
         >
-          {/* Page header */}
           <div className="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center gap-3 shrink-0">
             <span className="text-2xl">{activeTabInfo?.emoji}</span>
             <h2 className="text-xl font-bold">{activeTabInfo?.label}</h2>
           </div>
-
-          {/* Scrollable page content */}
           <div className="flex-1 overflow-hidden">
             {renderContent(() => setIsKioskMode(true))}
           </div>
@@ -184,16 +192,19 @@ const App: React.FC = () => {
   }
 
   // ─────────────────────────────────────────────
-  // Phone Layout: Bottom tab bar (original)
+  // Phone Layout: Bottom tab bar + top header
   // ─────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[100dvh] bg-base-100">
+
+      {/* Top header with language switcher */}
       <div className="sticky top-0 bg-base-100 border-b border-base-300 z-10">
-        <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold">Sumi Sensei</h1>
-          <div className="flex items-center gap-2 bg-base-200 px-3 py-1 rounded-full">
+        <div className="flex items-center justify-between px-3 py-2 gap-2">
+          <h1 className="text-base font-bold shrink-0">Sumi Sensei</h1>
+          <LangSwitcher />
+          <div className="flex items-center gap-1 bg-base-200 px-2 py-1 rounded-full shrink-0">
             <span>⭐</span>
-            <span className="font-bold">{safeStars}</span>
+            <span className="font-bold text-sm">{safeStars}</span>
           </div>
         </div>
       </div>
@@ -202,26 +213,35 @@ const App: React.FC = () => {
         {renderContent(() => setIsKioskMode(true))}
       </div>
 
+      {/* Bottom tab bar */}
       <div className="sticky bottom-0 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-around">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                 activeTab === tab.id
                   ? 'text-primary border-b-2 border-primary'
                   : 'text-base-content/50 hover:text-base-content'
               }`}
             >
               {tab.icon}
-              <span className="text-xs font-semibold">{tab.label}</span>
+              <span className="text-[10px] font-semibold leading-tight">{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
+
     </div>
   );
 };
+
+// ── Root — provides language context ──────────────────────────────────────
+const App: React.FC = () => (
+  <LanguageProvider>
+    <AppInner />
+  </LanguageProvider>
+);
 
 export default App;
