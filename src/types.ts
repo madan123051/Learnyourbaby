@@ -1,3 +1,6 @@
+// ===== Class Level =====
+export type ClassLevel = 'Nursery' | 'Class1' | 'Class2' | 'Class3' | 'Class4';
+
 // ===== Vocabulary Item =====
 export interface TrilingualWord {
   meta_data: {
@@ -5,6 +8,7 @@ export interface TrilingualWord {
     category: string;
     difficulty_level: 'Beginner' | 'Intermediate' | 'Advanced';
     age_group: string;
+    class_level: ClassLevel;
   };
   trilingual_content: {
     emoji: string;
