@@ -4,25 +4,18 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 type Point      = { x: number; y: number };
 type LetterMode = 'off' | 'upper' | 'lower';
 
-// ── Fun color palettes ──────────────────────────────────────────
+// ── Palettes ─────────────────────────────────────────────────────
 const RAINBOW_COLORS = [
   '#FF6B6B','#FF9F43','#FECA57','#48DBFB',
   '#FF6FF2','#55EFC4','#A29BFE','#FD79A8',
   '#00D2D3','#FF9FF3','#54A0FF','#5F27CD',
 ];
 
-const BRUSH_SIZES = [
-  { label: '●',  size: 8,  emoji: '🔹' },
-  { label: '●',  size: 16, emoji: '🔸' },
-  { label: '●',  size: 28, emoji: '🟡' },
-  { label: '●',  size: 48, emoji: '🟠' },
-  { label: '●',  size: 76, emoji: '🔴' },
-];
+const BRUSH_SIZES = [8, 16, 28, 48, 76];
 
 const UPPER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const LOWER_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-// Fun colors per letter for the guide
 const LETTER_COLORS = [
   '#FF6B6B','#FF9F43','#FECA57','#55EFC4','#48DBFB','#A29BFE','#FF6FF2',
   '#FD79A8','#00D2D3','#FF9FF3','#54A0FF','#5F27CD','#FF6B6B','#FF9F43',
@@ -30,12 +23,15 @@ const LETTER_COLORS = [
   '#FF9FF3','#54A0FF','#5F27CD','#FF6B6B','#FF9F43',
 ];
 
-// ── Confetti particle ───────────────────────────────────────────
-interface ConfettiPiece { id: number; x: number; y: number; color: string; rot: number; scale: number; delay: number; }
+// Minimum canvas-space stroke length to consider letter "done"
+// Canvas is 2048×1536 — a typical letter trace is ~3000px worth of distance
+const AUTO_COMPLETE_STROKE = 2800;
 
+// ── Confetti ──────────────────────────────────────────────────────
+interface ConfettiPiece { id: number; x: number; y: number; color: string; rot: number; scale: number; delay: number; }
 let confettiId = 0;
-const makeConfetti = (count: number): ConfettiPiece[] =>
-  Array.from({ length: count }, () => ({
+const makeConfetti = (n: number): ConfettiPiece[] =>
+  Array.from({ length: n }, () => ({
     id:    ++confettiId,
     x:     Math.random() * 100,
     y:     -10 - Math.random() * 20,
@@ -45,10 +41,7 @@ const makeConfetti = (count: number): ConfettiPiece[] =>
     delay: Math.random() * 0.5,
   }));
 
-// ── Props ────────────────────────────────────────────────────────
-interface Props { onClose: () => void; }
-
-// ── CSS keyframes (injected once) ────────────────────────────────
+// ── Keyframes ─────────────────────────────────────────────────────
 const ANIM_STYLE = `
 @keyframes mc-confetti-fall {
   0%   { transform: translateY(0) rotate(0deg) scale(var(--s)); opacity: 1; }
@@ -61,7 +54,7 @@ const ANIM_STYLE = `
 }
 @keyframes mc-pulse {
   0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.05); }
+  50%      { transform: scale(1.08); }
 }
 @keyframes mc-rainbow-bg {
   0%   { background-position: 0% 50%; }
@@ -74,83 +67,84 @@ const ANIM_STYLE = `
 }
 @keyframes mc-float {
   0%, 100% { transform: translateY(0px); }
-  50%      { transform: translateY(-6px); }
+  50%      { transform: translateY(-5px); }
 }
 @keyframes mc-star-pop {
   0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
   60%  { transform: scale(1.4) rotate(10deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
+@keyframes mc-progress-ring {
+  from { stroke-dashoffset: 226; }
+}
 `;
 
-// ── Component ────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────
+interface Props { onClose: () => void; }
+
+// ── Component ─────────────────────────────────────────────────────
 export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const lastPt     = useRef<Point | null>(null);
-  const isDrawing  = useRef(false);
+  const canvasRef           = useRef<HTMLCanvasElement>(null);
+  const lastPt              = useRef<Point | null>(null);
+  const isDrawing           = useRef(false);
+  const strokeLength        = useRef(0);          // accumulated drawing distance this letter
+  const autoCompleteTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [color,      setColor]      = useState(RAINBOW_COLORS[4]); // pink
-  const [brushIdx,   setBrushIdx]   = useState(2);
-  const [isEraser,   setIsEraser]   = useState(false);
-  const [history,    setHistory]    = useState<ImageData[]>([]);
-  const [letterMode, setLetterMode] = useState<LetterMode>('off');
-  const [letterIdx,  setLetterIdx]  = useState(0);
-  const [tick,       setTick]       = useState(0);
-  const [completed,  setCompleted]  = useState<Set<number>>(new Set());
-  const [confetti,   setConfetti]   = useState<ConfettiPiece[]>([]);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [hasDrawn,   setHasDrawn]   = useState(false); // track if child actually drew something
+  const [color,            setColor]           = useState(RAINBOW_COLORS[4]);
+  const [brushIdx,         setBrushIdx]        = useState(2);
+  const [isEraser,         setIsEraser]        = useState(false);
+  const [history,          setHistory]         = useState<ImageData[]>([]);
+  const [letterMode,       setLetterMode]      = useState<LetterMode>('off');
+  const [letterIdx,        setLetterIdx]       = useState(0);
+  const [tick,             setTick]            = useState(0);
+  const [completed,        setCompleted]       = useState<Set<number>>(new Set());
+  const [confetti,         setConfetti]        = useState<ConfettiPiece[]>([]);
+  const [showCelebration,  setShowCelebration] = useState(false);
+  const [strokePct,        setStrokePct]       = useState(0); // 0–100% fill indicator
 
-  const brushSize     = BRUSH_SIZES[brushIdx].size;
+  const brushSize     = BRUSH_SIZES[brushIdx];
   const letters       = letterMode === 'upper' ? UPPER_LETTERS
                       : letterMode === 'lower' ? LOWER_LETTERS : [];
   const currentLetter = letters[letterIdx] ?? '';
   const isLetterMode  = letterMode !== 'off';
   const letterColor   = LETTER_COLORS[letterIdx] || '#FF6B6B';
+  const starsEarned   = completed.size;
+  const progressPct   = isLetterMode ? (starsEarned / 26) * 100 : 0;
 
-  // ── Inject keyframes ──────────────────────────────────────────
+  // ── Inject keyframes once ─────────────────────────────────────
   useEffect(() => {
-    if (document.getElementById('mc-anim-styles')) return;
+    if (document.getElementById('mc-anim')) return;
     const s = document.createElement('style');
-    s.id = 'mc-anim-styles';
+    s.id = 'mc-anim';
     s.textContent = ANIM_STYLE;
     document.head.appendChild(s);
-    return () => { s.remove(); };
+    return () => s.remove();
   }, []);
 
-  // ── Clear canvas ──────────────────────────────────────────────
+  // ── Canvas helpers ────────────────────────────────────────────
   const clearCanvas = useCallback((ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!isLetterMode) {
-      // Fun gradient background in free mode
-      const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      g.addColorStop(0, '#ffecd2');
-      g.addColorStop(0.5, '#fcb69f');
-      g.addColorStop(1, '#ffecd2');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-  }, [isLetterMode]);
+  }, []);
 
-  // ── Fill canvas on mount ──────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    clearCanvas(ctx, canvas);
+    if (ctx) clearCanvas(ctx, canvas);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-clear when letter/mode changes ─────────────────────────
+  // ── Reset stroke tracking on letter/mode change ───────────────
   useEffect(() => {
+    if (autoCompleteTimer.current) { clearTimeout(autoCompleteTimer.current); autoCompleteTimer.current = null; }
+    strokeLength.current = 0;
+    setStrokePct(0);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     clearCanvas(ctx, canvas);
     setHistory([]);
-    setHasDrawn(false); // reset drawing flag for each new letter
     setTick(t => t + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letterMode, letterIdx]);
@@ -165,7 +159,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     };
   }, []);
 
-  // ── Snapshots ─────────────────────────────────────────────────
+  // ── Undo snapshots ────────────────────────────────────────────
   const saveSnapshot = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -174,36 +168,29 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     setHistory(h => [...h.slice(-30), ctx.getImageData(0, 0, canvas.width, canvas.height)]);
   }, []);
 
-  const hardClear = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    clearCanvas(ctx, canvas);
-    setHistory([]);
-    setTick(t => t + 1);
-  }, [clearCanvas]);
+  // ── Auto-complete trigger ──────────────────────────────────────
+  const triggerAutoComplete = useCallback(() => {
+    if (showCelebration) return; // already celebrating
+    setCompleted(prev => new Set(prev).add(letterIdx));
+    setConfetti(makeConfetti(45));
+    setShowCelebration(true);
+    strokeLength.current = 0;
+    setStrokePct(0);
+    setTimeout(() => {
+      setShowCelebration(false);
+      setConfetti([]);
+      if (letterIdx < 25) setLetterIdx(i => i + 1);
+    }, 2000);
+  }, [letterIdx, showCelebration]);
 
-  const clear = useCallback(() => { saveSnapshot(); hardClear(); }, [saveSnapshot, hardClear]);
-
-  const undo = useCallback(() => {
-    setHistory(h => {
-      if (h.length === 0) return h;
-      const canvas = canvasRef.current;
-      if (!canvas) return h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.putImageData(h[h.length - 1], 0, 0);
-      setTick(t => t + 1);
-      return h.slice(0, -1);
-    });
-  }, []);
-
-  // ── Drawing ───────────────────────────────────────────────────
+  // ── Drawing handlers ──────────────────────────────────────────
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (showCelebration) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       saveSnapshot();
-      if (!isEraser) setHasDrawn(true); // child is drawing — unlock Done button
+      // Cancel pending auto-complete if user touches again
+      if (autoCompleteTimer.current) { clearTimeout(autoCompleteTimer.current); autoCompleteTimer.current = null; }
       const pt = getPoint(e);
       lastPt.current    = pt;
       isDrawing.current = true;
@@ -224,7 +211,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
         ctx.fill();
       }
     },
-    [color, brushSize, isEraser, getPoint, saveSnapshot],
+    [color, brushSize, isEraser, getPoint, saveSnapshot, showCelebration],
   );
 
   const onPointerMove = useCallback(
@@ -234,6 +221,24 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
       if (!canvas) return;
       const ctx = canvas.getContext('2d')!;
       const pt  = getPoint(e);
+
+      // ── Accumulate stroke length for auto-complete ──
+      if (!isEraser && isLetterMode) {
+        const dx = pt.x - lastPt.current.x;
+        const dy = pt.y - lastPt.current.y;
+        strokeLength.current += Math.sqrt(dx * dx + dy * dy);
+        const pct = Math.min(100, (strokeLength.current / AUTO_COMPLETE_STROKE) * 100);
+        setStrokePct(pct);
+
+        // When enough is drawn, start 1.5s auto-complete timer
+        if (strokeLength.current >= AUTO_COMPLETE_STROKE && !autoCompleteTimer.current) {
+          autoCompleteTimer.current = setTimeout(() => {
+            triggerAutoComplete();
+            autoCompleteTimer.current = null;
+          }, 1500);
+        }
+      }
+
       if (isEraser) {
         ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
@@ -257,7 +262,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
       }
       lastPt.current = pt;
     },
-    [color, brushSize, isEraser, getPoint],
+    [color, brushSize, isEraser, getPoint, isLetterMode, triggerAutoComplete],
   );
 
   const onPointerUp = useCallback(() => {
@@ -265,20 +270,38 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     lastPt.current    = null;
   }, []);
 
-  // ── Letter navigation with celebration ────────────────────────
-  const markDoneAndNext = useCallback(() => {
-    setCompleted(prev => new Set(prev).add(letterIdx));
-    setConfetti(makeConfetti(40));
-    setShowCelebration(true);
-    setTimeout(() => {
-      setShowCelebration(false);
-      setConfetti([]);
-      if (letterIdx < 25) setLetterIdx(i => i + 1);
-    }, 1500);
-  }, [letterIdx]);
+  // ── Manual Done ───────────────────────────────────────────────
+  const manualDone = useCallback(() => {
+    if (autoCompleteTimer.current) { clearTimeout(autoCompleteTimer.current); autoCompleteTimer.current = null; }
+    triggerAutoComplete();
+  }, [triggerAutoComplete]);
 
-  const goToLetter = useCallback((idx: number) => setLetterIdx(idx), []);
-  const prevLetter = useCallback(() => setLetterIdx(i => Math.max(i - 1, 0)), []);
+  // ── Other nav ─────────────────────────────────────────────────
+  const hardClear = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    clearCanvas(ctx, canvas);
+    strokeLength.current = 0;
+    setStrokePct(0);
+    setHistory([]);
+    setTick(t => t + 1);
+  }, [clearCanvas]);
+
+  const clear = useCallback(() => { saveSnapshot(); hardClear(); }, [saveSnapshot, hardClear]);
+
+  const undo = useCallback(() => {
+    setHistory(h => {
+      if (h.length === 0) return h;
+      const canvas = canvasRef.current;
+      if (!canvas) return h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.putImageData(h[h.length - 1], 0, 0);
+      setTick(t => t + 1);
+      return h.slice(0, -1);
+    });
+  }, []);
 
   const cycleLetterMode = useCallback(() => {
     setLetterMode(m => m === 'off' ? 'upper' : m === 'upper' ? 'lower' : 'off');
@@ -286,11 +309,8 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     setCompleted(new Set());
   }, []);
 
-  const modeBtnLabel = letterMode === 'off' ? '🔤 A–Z'
+  const modeBtnLabel = letterMode === 'off'   ? '🔤 A–Z'
                      : letterMode === 'upper' ? '🔠 ABC' : '🔡 abc';
-
-  const starsEarned = completed.size;
-  const progressPct = isLetterMode ? ((starsEarned) / 26) * 100 : 0;
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -298,7 +318,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
       className="fixed inset-0 z-50 flex flex-col"
       style={{
         background:    isLetterMode
-          ? `linear-gradient(135deg, ${letterColor}15, #fff5f5, ${letterColor}10)`
+          ? `linear-gradient(135deg, ${letterColor}15, #fff8f8, ${letterColor}10)`
           : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         paddingTop:    'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
@@ -306,176 +326,143 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
         paddingRight:  'env(safe-area-inset-right)',
       }}
     >
-      {/* ── Confetti overlay ──────────────────────────────────── */}
+      {/* ── Confetti ──────────────────────────────────────────── */}
       {confetti.length > 0 && (
-        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 100 }}>
+        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 200 }}>
           {confetti.map(c => (
-            <div
-              key={c.id}
-              style={{
-                position:  'absolute',
-                left:      `${c.x}%`,
-                top:       `${c.y}%`,
-                width:     12 * c.scale,
-                height:    12 * c.scale,
-                background: c.color,
-                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-                // @ts-ignore
-                '--s':     c.scale,
-                animation: `mc-confetti-fall 2s ${c.delay}s ease-in forwards`,
-              } as React.CSSProperties}
-            />
+            <div key={c.id} style={{
+              position: 'absolute', left: `${c.x}%`, top: `${c.y}%`,
+              width: 12 * c.scale, height: 12 * c.scale, background: c.color,
+              borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+              // @ts-ignore
+              '--s': c.scale,
+              animation: `mc-confetti-fall 2s ${c.delay}s ease-in forwards`,
+            } as React.CSSProperties} />
           ))}
         </div>
       )}
 
-      {/* ── Celebration overlay ───────────────────────────────── */}
+      {/* ── Celebration ───────────────────────────────────────── */}
       {showCelebration && (
-        <div
-          className="fixed inset-0 flex items-center justify-center pointer-events-none"
-          style={{ zIndex: 99 }}
-        >
-          <div
-            className="flex flex-col items-center gap-2"
-            style={{ animation: 'mc-bounce-in 0.5s ease-out' }}
-          >
-            <span style={{ fontSize: '20vmin', animation: 'mc-pulse 0.6s ease-in-out infinite' }}>⭐</span>
-            <span
-              className="font-black text-white px-6 py-3 rounded-3xl"
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 199 }}>
+          <div className="flex flex-col items-center gap-3" style={{ animation: 'mc-bounce-in 0.5s ease-out' }}>
+            <span style={{ fontSize: '22vmin', animation: 'mc-pulse 0.5s ease-in-out infinite' }}>⭐</span>
+            <span className="font-black text-white px-8 py-4 rounded-3xl text-center"
               style={{
-                fontSize:   '6vmin',
-                background: 'linear-gradient(135deg, #FF6B6B, #FF9F43, #FECA57)',
+                fontSize: '6vmin',
+                background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 5) % 26]})`,
                 textShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                animation:  'mc-bounce-in 0.5s 0.2s ease-out both',
+                animation: 'mc-bounce-in 0.4s 0.2s ease-out both',
               }}
             >
-              {letterIdx === 25 ? '🎉 All Done! Amazing! 🎉' : `Great job! ✨`}
+              {letterIdx === 25 ? '🎉 Sab ho gaya! Amazing! 🎉' : `Sahi hai! ✨ ${currentLetter} seekh liya!`}
             </span>
           </div>
         </div>
       )}
 
-      {/* ── Top bar ──────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════
+          TOP BAR
+      ══════════════════════════════════════════════════════════ */}
       <div
         className="flex items-center justify-between px-4 py-2 shrink-0"
         style={{
-          background: isLetterMode
-            ? 'rgba(255,255,255,0.9)'
-            : 'rgba(255,255,255,0.15)',
+          background:     'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(12px)',
-          borderBottom:   isLetterMode
-            ? `3px solid ${letterColor}40`
-            : '1px solid rgba(255,255,255,0.2)',
+          borderBottom:   isLetterMode ? `3px solid ${letterColor}40` : '1px solid rgba(0,0,0,0.06)',
         }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl" style={{ animation: 'mc-float 2s ease-in-out infinite' }}>🎨</span>
+          <span className="text-2xl" style={{ animation: 'mc-float 2.5s ease-in-out infinite' }}>🎨</span>
           <div>
-            <p
-              className="font-black text-base leading-none"
+            <p className="font-black text-base leading-none"
               style={{
-                color: isLetterMode ? '#2d3436' : '#fff',
-                background: isLetterMode ? `linear-gradient(90deg, ${letterColor}, #FF6FF2)` : 'none',
-                WebkitBackgroundClip: isLetterMode ? 'text' : 'unset',
-                WebkitTextFillColor: isLetterMode ? 'transparent' : 'unset',
+                background: `linear-gradient(90deg, ${isLetterMode ? letterColor : '#667eea'}, #FF6FF2)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               } as React.CSSProperties}
             >
               Magic Canvas
             </p>
-            <p
-              className="text-xs font-bold mt-0.5"
-              style={{ color: isLetterMode ? '#636e72' : 'rgba(255,255,255,0.7)' }}
-            >
-              {isLetterMode
-                ? `✏️ Trace the letter — you got this! 💪`
-                : '✨ Draw anything you imagine!'}
+            <p className="text-xs font-semibold mt-0.5" style={{ color: '#888' }}>
+              {isLetterMode ? `✏️ Trace karo — you got this! 💪` : '✨ Kuch bhi banao!'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={cycleLetterMode}
-            className="px-4 py-2 rounded-2xl text-sm font-black transition-all active:scale-95"
+          {/* ABC mode toggle */}
+          <button onClick={cycleLetterMode}
+            className="px-4 py-2 rounded-2xl text-sm font-black active:scale-95 transition-all"
             style={{
-              background:    isLetterMode
+              background: isLetterMode
                 ? `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 3) % 26]})`
-                : 'rgba(255,255,255,0.25)',
-              color:         '#fff',
-              boxShadow:     isLetterMode ? `0 4px 15px ${letterColor}60` : 'none',
+                : 'rgba(0,0,0,0.08)',
+              color: isLetterMode ? '#fff' : '#555',
+              boxShadow: isLetterMode ? `0 4px 15px ${letterColor}50` : 'none',
             }}
           >
             {modeBtnLabel}
           </button>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold active:scale-95 transition-all"
-            style={{
-              background: isLetterMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.2)',
-              color:      isLetterMode ? '#636e72' : '#fff',
-            }}
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold active:scale-95 transition-all"
+            style={{ background: 'rgba(0,0,0,0.08)', color: '#555' }}
           >
             ✕
           </button>
         </div>
       </div>
 
-      {/* ── Progress bar + stars (letter mode) ───────────────── */}
+      {/* ══════════════════════════════════════════════════════════
+          PROGRESS BAR (letter mode)
+      ══════════════════════════════════════════════════════════ */}
       {isLetterMode && (
-        <div className="shrink-0 px-4 py-1.5" style={{ background: 'rgba(255,255,255,0.6)' }}>
+        <div className="shrink-0 px-4 py-1.5" style={{ background: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
+            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.07)' }}>
+              <div className="h-full rounded-full transition-all duration-700"
                 style={{
-                  width:      `${progressPct}%`,
-                  background: `linear-gradient(90deg, ${LETTER_COLORS[0]}, ${LETTER_COLORS[6]}, ${LETTER_COLORS[12]}, ${LETTER_COLORS[18]}, ${LETTER_COLORS[24]})`,
+                  width: `${progressPct}%`,
+                  background: `linear-gradient(90deg, ${LETTER_COLORS[0]}, ${LETTER_COLORS[8]}, ${LETTER_COLORS[16]}, ${LETTER_COLORS[24]})`,
                   backgroundSize: '200% 100%',
-                  animation:  'mc-rainbow-bg 3s ease infinite',
+                  animation: 'mc-rainbow-bg 3s ease infinite',
                 }}
               />
             </div>
-            <span className="font-black text-sm" style={{ color: '#2d3436' }}>
-              ⭐ {starsEarned}/26
-            </span>
+            <span className="font-black text-sm" style={{ color: '#2d3436' }}>⭐ {starsEarned}/26</span>
           </div>
         </div>
       )}
 
-      {/* ── Letter selector strip ─────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════
+          LETTER STRIP (letter mode)
+      ══════════════════════════════════════════════════════════ */}
       {isLetterMode && (
-        <div
-          className="shrink-0 flex items-center gap-2 px-3 py-2"
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2"
           style={{
-            background:   'rgba(255,255,255,0.7)',
+            background:   'rgba(255,255,255,0.8)',
             backdropFilter: 'blur(8px)',
-            borderBottom: `2px solid ${letterColor}30`,
+            borderBottom: `2px solid ${letterColor}25`,
           }}
         >
-          <button
-            onClick={prevLetter}
-            disabled={letterIdx === 0}
-            className="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all shrink-0"
+          <button onClick={() => setLetterIdx(i => Math.max(i - 1, 0))} disabled={letterIdx === 0}
+            className="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center shrink-0 disabled:opacity-20 active:scale-95 transition-all"
             style={{ background: `${letterColor}20`, color: letterColor }}
-          >
-            ‹
-          </button>
+          >‹</button>
 
           <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1" style={{ scrollbarWidth: 'none' }}>
             {letters.map((ltr, i) => {
-              const lc = LETTER_COLORS[i];
+              const lc        = LETTER_COLORS[i];
               const isCurrent = i === letterIdx;
               const isDone    = completed.has(i);
               return (
-                <button
-                  key={ltr}
-                  onClick={() => goToLetter(i)}
-                  className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all active:scale-110 relative"
+                <button key={ltr} onClick={() => setLetterIdx(i)}
+                  className="shrink-0 w-10 h-10 rounded-xl font-black text-sm active:scale-110 transition-all relative"
                   style={{
                     background: isCurrent
                       ? `linear-gradient(135deg, ${lc}, ${LETTER_COLORS[(i + 3) % 26]})`
                       : isDone ? `${lc}25` : 'rgba(0,0,0,0.05)',
-                    color:   isCurrent ? '#fff' : isDone ? lc : '#aaa',
+                    color:     isCurrent ? '#fff' : isDone ? lc : '#aaa',
                     transform: isCurrent ? 'scale(1.2)' : 'scale(1)',
                     boxShadow: isCurrent ? `0 4px 12px ${lc}50` : 'none',
                     border:    isDone && !isCurrent ? `2px solid ${lc}60` : 'none',
@@ -483,130 +470,79 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
                 >
                   {ltr}
                   {isDone && !isCurrent && (
-                    <span
-                      className="absolute -top-1 -right-1 text-xs"
-                      style={{ animation: 'mc-star-pop 0.4s ease-out' }}
-                    >
-                      ⭐
-                    </span>
+                    <span className="absolute -top-1 -right-1 text-xs" style={{ animation: 'mc-star-pop 0.4s ease-out' }}>⭐</span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          <button
-            onClick={() => { if (letterIdx < 25) setLetterIdx(i => i + 1); }}
-            disabled={letterIdx === 25}
-            className="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all shrink-0"
+          <button onClick={() => { if (letterIdx < 25) setLetterIdx(i => i + 1); }} disabled={letterIdx === 25}
+            className="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center shrink-0 disabled:opacity-20 active:scale-95 transition-all"
             style={{ background: `${letterColor}20`, color: letterColor }}
-          >
-            ›
-          </button>
+          >›</button>
         </div>
       )}
 
-      {/* ── Canvas area ──────────────────────────────────────── */}
-      <div
-        className="flex-1 overflow-hidden relative"
+      {/* ══════════════════════════════════════════════════════════
+          CANVAS AREA — fills ALL remaining space
+      ══════════════════════════════════════════════════════════ */}
+      <div className="flex-1 relative overflow-hidden"
         style={{
-          background: isLetterMode ? '#fff' : 'transparent',
-          borderRadius: isLetterMode ? '20px' : 0,
-          margin:       isLetterMode ? '6px 8px' : 0,
-          boxShadow:    isLetterMode ? `0 4px 30px ${letterColor}25, inset 0 0 60px ${letterColor}08` : 'none',
-          border:       isLetterMode ? `3px solid ${letterColor}30` : 'none',
+          background: '#fff',
+          // subtle shadow inset to look like paper
+          boxShadow: isLetterMode ? `inset 0 0 60px ${letterColor}08` : 'none',
         }}
       >
-        {/* ── Fun guide lines (letter mode) ──────────────────── */}
+        {/* Ruled guide lines */}
         {isLetterMode && (
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ zIndex: 0 }}
-            preserveAspectRatio="none"
-          >
-            {/* Dashed guide lines like ruled paper */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }} preserveAspectRatio="none">
             {[25, 50, 75].map(pct => (
-              <line
-                key={pct}
-                x1="0" y1={`${pct}%`} x2="100%" y2={`${pct}%`}
-                stroke={`${letterColor}20`}
-                strokeWidth="1.5"
-                strokeDasharray="8 6"
-              />
+              <line key={pct} x1="0" y1={`${pct}%`} x2="100%" y2={`${pct}%`}
+                stroke={`${letterColor}18`} strokeWidth="1.5" strokeDasharray="8 6" />
             ))}
-            {/* Baseline */}
-            <line
-              x1="0" y1="73%" x2="100%" y2="73%"
-              stroke={`${letterColor}35`}
-              strokeWidth="2"
-            />
+            <line x1="0" y1="73%" x2="100%" y2="73%" stroke={`${letterColor}30`} strokeWidth="2" />
           </svg>
         )}
 
-        {/* ── Ghost/guide letter ──────────────────────────────── */}
+        {/* Ghost letter guide — CSS overlay behind canvas */}
         {isLetterMode && currentLetter && (
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-            style={{ zIndex: 1 }}
-          >
-            {/* Big colorful faint letter */}
-            <span
-              className="absolute"
-              style={{
-                fontSize:    '55vmin',
-                fontWeight:  900,
-                fontFamily:  '"Arial Rounded MT Bold", "Nunito", "Comic Sans MS", Arial, sans-serif',
-                lineHeight:  1,
-                userSelect:  'none',
-                color:       `${letterColor}12`,
-              }}
-            >
-              {currentLetter}
-            </span>
-            {/* Dotted outline — tracing guide */}
-            <span
-              className="absolute"
-              style={{
-                fontSize:         '55vmin',
-                fontWeight:       900,
-                fontFamily:       '"Arial Rounded MT Bold", "Nunito", "Comic Sans MS", Arial, sans-serif',
-                lineHeight:       1,
-                userSelect:       'none',
-                color:            'transparent',
-                WebkitTextStroke: `8px ${letterColor}40`,
-              }}
-            >
-              {currentLetter}
-            </span>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ zIndex: 1 }}>
+            {/* Solid faint fill */}
+            <span className="absolute" style={{
+              fontSize: '60vmin',
+              fontWeight: 900,
+              fontFamily: '"Arial Rounded MT Bold", "Nunito", "Comic Sans MS", Arial, sans-serif',
+              lineHeight: 1,
+              userSelect: 'none',
+              color: `${letterColor}10`,
+            }}>{currentLetter}</span>
+            {/* Dotted stroke outline */}
+            <span className="absolute" style={{
+              fontSize: '60vmin',
+              fontWeight: 900,
+              fontFamily: '"Arial Rounded MT Bold", "Nunito", "Comic Sans MS", Arial, sans-serif',
+              lineHeight: 1,
+              userSelect: 'none',
+              color: 'transparent',
+              WebkitTextStroke: `8px ${letterColor}35`,
+            }}>{currentLetter}</span>
           </div>
         )}
 
-        {/* ── Sparkle decorations in corners ──────────────────── */}
-        {isLetterMode && (
-          <>
-            {[
-              { top: '8%', left: '5%', delay: '0s', size: '24px' },
-              { top: '12%', right: '8%', delay: '0.5s', size: '18px' },
-              { bottom: '15%', left: '10%', delay: '1s', size: '20px' },
-              { bottom: '10%', right: '5%', delay: '1.5s', size: '22px' },
-            ].map((pos, i) => (
-              <div
-                key={i}
-                className="absolute pointer-events-none"
-                style={{
-                  ...pos,
-                  fontSize:  pos.size,
-                  zIndex:    1,
-                  animation: `mc-sparkle 2s ${pos.delay} ease-in-out infinite`,
-                } as React.CSSProperties}
-              >
-                ✨
-              </div>
-            ))}
-          </>
-        )}
+        {/* Sparkle corners */}
+        {isLetterMode && [
+          { top: '6%', left: '4%',  delay: '0s',   size: '22px' },
+          { top: '8%', right: '6%', delay: '0.6s', size: '18px' },
+          { bottom: '12%', left: '8%',  delay: '1.1s', size: '20px' },
+          { bottom: '8%',  right: '4%', delay: '1.7s', size: '24px' },
+        ].map((pos, i) => (
+          <div key={i} className="absolute pointer-events-none"
+            style={{ ...pos, fontSize: pos.size, zIndex: 1, animation: `mc-sparkle 2.5s ${pos.delay} ease-in-out infinite` } as React.CSSProperties}
+          >✨</div>
+        ))}
 
-        {/* ── Drawing canvas ──────────────────────────────────── */}
+        {/* Drawing canvas — absolutely fills container */}
         <canvas
           ref={canvasRef}
           width={2048}
@@ -623,89 +559,108 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
           onPointerCancel={onPointerUp}
         />
 
-        {/* ── "Done ✓ Next" floating button ──────────────────── */}
-        {isLetterMode && letterIdx <= 25 && !showCelebration && (
-          <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1" style={{ zIndex: 3 }}>
-            {/* Hint label when not drawn yet */}
-            {!hasDrawn && (
-              <span
-                className="text-xs font-bold px-3 py-1 rounded-full"
-                style={{
-                  background: `${letterColor}20`,
-                  color: letterColor,
-                  animation: 'mc-pulse 1.5s ease-in-out infinite',
-                }}
+        {/* ── Top-left: current letter badge ── */}
+        {isLetterMode && (
+          <div className="absolute top-3 left-3 w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl"
+            style={{
+              zIndex: 3,
+              background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 4) % 26]})`,
+              color: '#fff',
+              boxShadow: `0 4px 15px ${letterColor}50`,
+              animation: 'mc-pulse 2.5s ease-in-out infinite',
+            }}
+          >{currentLetter}</div>
+        )}
+
+        {/* ── Stroke progress ring (top-right) ── */}
+        {isLetterMode && !showCelebration && (
+          <div className="absolute top-3 right-3" style={{ zIndex: 3 }}>
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              {/* Background circle */}
+              <circle cx="26" cy="26" r="22" fill="rgba(255,255,255,0.8)" stroke={`${letterColor}20`} strokeWidth="4" />
+              {/* Progress arc */}
+              <circle
+                cx="26" cy="26" r="18"
+                fill="none"
+                stroke={`url(#prog-${letterIdx})`}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="113"
+                strokeDashoffset={113 - (113 * strokePct / 100)}
+                transform="rotate(-90 26 26)"
+                style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+              />
+              <defs>
+                <linearGradient id={`prog-${letterIdx}`} x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor={letterColor} />
+                  <stop offset="100%" stopColor={LETTER_COLORS[(letterIdx + 5) % 26]} />
+                </linearGradient>
+              </defs>
+              {/* Pencil icon */}
+              <text x="26" y="31" textAnchor="middle" fontSize="14">✏️</text>
+            </svg>
+            {/* "Draw more!" hint when just started */}
+            {strokePct < 20 && (
+              <div className="absolute -bottom-6 right-0 whitespace-nowrap text-xs font-bold rounded-full px-2 py-0.5"
+                style={{ background: `${letterColor}20`, color: letterColor, animation: 'mc-pulse 1.5s ease-in-out infinite' }}
               >
-                ✏️ Pehle likho!
-              </span>
+                Likho! ✏️
+              </div>
             )}
-            <button
-              onClick={hasDrawn ? markDoneAndNext : undefined}
-              disabled={!hasDrawn}
-              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl font-black text-white text-base transition-all"
-              style={{
-                background:  hasDrawn
-                  ? `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 5) % 26]})`
-                  : 'rgba(180,180,180,0.5)',
-                boxShadow:   hasDrawn ? `0 6px 25px ${letterColor}50` : 'none',
-                animation:   hasDrawn ? 'mc-float 2s ease-in-out infinite' : 'none',
-                color:       hasDrawn ? '#fff' : 'rgba(100,100,100,0.6)',
-                cursor:      hasDrawn ? 'pointer' : 'not-allowed',
-                transform:   hasDrawn ? undefined : 'scale(0.95)',
-              }}
-            >
-              {letterIdx === 25
-                ? <>🎉 Finish!</>
-                : <>Done ✓ Next {letters[letterIdx + 1]} →</>
-              }
-            </button>
           </div>
         )}
 
-        {/* ── Current letter indicator (big, top-left) ────────── */}
-        {isLetterMode && (
-          <div
-            className="absolute top-3 left-3 w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl"
+        {/* ── Manual "Done" button — only visible once enough drawn (50%+) ── */}
+        {isLetterMode && strokePct >= 50 && !showCelebration && (
+          <button
+            onClick={manualDone}
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-white text-base active:scale-95 transition-all"
             style={{
               zIndex:     3,
-              background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 4) % 26]})`,
-              color:      '#fff',
-              boxShadow:  `0 4px 15px ${letterColor}40`,
-              animation:  'mc-pulse 2s ease-in-out infinite',
+              background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 5) % 26]})`,
+              boxShadow:  `0 6px 25px ${letterColor}55`,
+              animation:  'mc-float 2s ease-in-out infinite',
             }}
           >
-            {currentLetter}
+            {strokePct >= 100
+              ? <>✅ Done!</>
+              : <>{letterIdx === 25 ? '🎉 Finish!' : `Done ✓ Next ${letters[letterIdx + 1] ?? ''} →`}</>
+            }
+          </button>
+        )}
+
+        {/* Free draw — floating emoji hints */}
+        {!isLetterMode && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
+            <span className="font-black text-white/20 text-2xl text-center px-8">
+              ✨ Kuch bhi banao!<br/>🌈 Draw anything!
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── Bottom toolbar ────────────────────────────────────── */}
-      <div
-        className="shrink-0 px-4 pt-2.5 pb-3"
+      {/* ══════════════════════════════════════════════════════════
+          BOTTOM TOOLBAR
+      ══════════════════════════════════════════════════════════ */}
+      <div className="shrink-0 px-4 pt-2.5 pb-2"
         style={{
-          background:    isLetterMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.3)',
+          background:    'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(12px)',
-          borderTop:     isLetterMode ? `2px solid ${letterColor}25` : '1px solid rgba(255,255,255,0.15)',
+          borderTop:     `2px solid ${isLetterMode ? letterColor + '25' : 'rgba(0,0,0,0.06)'}`,
         }}
       >
         {/* Color row */}
-        <div className="flex items-center justify-center gap-2 mb-2.5 flex-wrap">
+        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
           {RAINBOW_COLORS.map((c, i) => (
-            <button
-              key={c}
-              onClick={() => { setColor(c); setIsEraser(false); }}
+            <button key={c} onClick={() => { setColor(c); setIsEraser(false); }}
               className="rounded-full transition-all active:scale-125"
               style={{
-                width:         !isEraser && color === c ? 40 : 32,
-                height:        !isEraser && color === c ? 40 : 32,
+                width:         !isEraser && color === c ? 38 : 30,
+                height:        !isEraser && color === c ? 38 : 30,
                 background:    `linear-gradient(135deg, ${c}, ${RAINBOW_COLORS[(i + 3) % RAINBOW_COLORS.length]})`,
-                outline:       !isEraser && color === c
-                                 ? `3px solid ${c}`
-                                 : 'none',
+                outline:       !isEraser && color === c ? `3px solid ${c}` : 'none',
                 outlineOffset: '3px',
-                boxShadow:     !isEraser && color === c
-                                 ? `0 0 12px ${c}60`
-                                 : `0 2px 6px ${c}30`,
+                boxShadow:     !isEraser && color === c ? `0 0 12px ${c}70` : `0 2px 6px ${c}30`,
               }}
             />
           ))}
@@ -713,72 +668,44 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
 
         {/* Brush + tools row */}
         <div className="flex items-center justify-between gap-2">
-          {/* Brush sizes */}
           <div className="flex items-center gap-1.5">
-            {BRUSH_SIZES.map((b, i) => (
-              <button
-                key={b.size}
-                onClick={() => { setBrushIdx(i); setIsEraser(false); }}
-                className="rounded-full flex items-center justify-center transition-all active:scale-110"
+            {BRUSH_SIZES.map((sz, i) => (
+              <button key={sz} onClick={() => { setBrushIdx(i); setIsEraser(false); }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-110"
                 style={{
-                  width:         36,
-                  height:        36,
-                  background:    !isEraser && brushIdx === i
-                                   ? `linear-gradient(135deg, ${color}, ${RAINBOW_COLORS[(RAINBOW_COLORS.indexOf(color) + 3) % RAINBOW_COLORS.length]})`
-                                   : isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                  boxShadow:     !isEraser && brushIdx === i ? `0 3px 10px ${color}50` : 'none',
-                  outline:       !isEraser && brushIdx === i ? '2px solid rgba(255,255,255,0.8)' : 'none',
+                  background: !isEraser && brushIdx === i
+                    ? `linear-gradient(135deg, ${color}, ${RAINBOW_COLORS[(RAINBOW_COLORS.indexOf(color) + 3) % RAINBOW_COLORS.length]})`
+                    : 'rgba(0,0,0,0.06)',
+                  boxShadow: !isEraser && brushIdx === i ? `0 3px 10px ${color}50` : 'none',
+                  outline: !isEraser && brushIdx === i ? '2px solid rgba(255,255,255,0.9)' : 'none',
                   outlineOffset: '2px',
                 }}
               >
-                <div
-                  className="rounded-full"
-                  style={{
-                    width:      6 + i * 5,
-                    height:     6 + i * 5,
-                    background: !isEraser && brushIdx === i ? '#fff' : (isLetterMode ? '#999' : 'rgba(255,255,255,0.5)'),
-                  }}
-                />
+                <div className="rounded-full" style={{
+                  width: 5 + i * 4, height: 5 + i * 4,
+                  background: !isEraser && brushIdx === i ? '#fff' : '#999',
+                }} />
               </button>
             ))}
           </div>
 
-          {/* Tools */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsEraser(e => !e)}
-              className="px-3 py-2 rounded-2xl text-base font-bold transition-all active:scale-95"
-              style={{
-                background: isEraser
-                  ? 'linear-gradient(135deg, #FF6B6B, #ee5a24)'
-                  : isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                boxShadow:  isEraser ? '0 3px 10px rgba(255,107,107,0.4)' : 'none',
-                color:       isLetterMode && !isEraser ? '#636e72' : '#fff',
-              }}
-            >
-              🧹
-            </button>
-            <button
-              onClick={undo}
-              disabled={history.length === 0}
-              className="px-3 py-2 rounded-2xl text-base font-bold disabled:opacity-25 active:scale-95 transition-all"
-              style={{
-                background: isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                color:      isLetterMode ? '#636e72' : '#fff',
-              }}
-            >
-              ↩️
-            </button>
-            <button
-              onClick={clear}
+            <button onClick={() => setIsEraser(e => !e)}
               className="px-3 py-2 rounded-2xl text-base font-bold active:scale-95 transition-all"
               style={{
-                background: isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                color:      isLetterMode ? '#636e72' : '#fff',
+                background: isEraser ? 'linear-gradient(135deg, #FF6B6B, #ee5a24)' : 'rgba(0,0,0,0.06)',
+                boxShadow:  isEraser ? '0 3px 10px rgba(255,107,107,0.5)' : 'none',
+                color:      isEraser ? '#fff' : '#666',
               }}
-            >
-              🗑️
-            </button>
+            >🧹</button>
+            <button onClick={undo} disabled={history.length === 0}
+              className="px-3 py-2 rounded-2xl text-base font-bold disabled:opacity-25 active:scale-95 transition-all"
+              style={{ background: 'rgba(0,0,0,0.06)', color: '#666' }}
+            >↩️</button>
+            <button onClick={clear}
+              className="px-3 py-2 rounded-2xl text-base font-bold active:scale-95 transition-all"
+              style={{ background: 'rgba(0,0,0,0.06)', color: '#666' }}
+            >🗑️</button>
           </div>
         </div>
       </div>
