@@ -7,6 +7,8 @@ import { StarsScreen } from './components/StarsScreen';
 import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen';
 import { MagicCanvasScreen } from './components/MagicCanvasScreen';
 import { useIsPad } from './hooks/useIsPad';
+import { useLang } from './context/LanguageContext';
+import { Lang } from './i18n';
 
 const F = "'Nunito', 'Baloo 2', sans-serif";
 
@@ -26,10 +28,18 @@ const TABS: Tab[] = [
   { id: 'floatingPlayground', label: 'Play',     emoji: '🎈', color: '#38A169' },
 ];
 
+const LANG_OPTIONS: { code: Lang; flag: string; label: string }[] = [
+  { code: 'en', flag: '🇬🇧', label: 'EN' },
+  { code: 'ja', flag: '🇯🇵', label: 'JA' },
+  { code: 'ne', flag: '🇳🇵', label: 'NE' },
+];
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [isKioskMode, setIsKioskMode] = useState(false);
   const isPad = useIsPad();
+  const { lang, setLang } = useLang();
+
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -74,6 +84,48 @@ const App: React.FC = () => {
 
   const safeStars = !progress.totalStars || isNaN(progress.totalStars) ? 0 : progress.totalStars;
 
+  // Language switcher buttons — reused in both layouts
+  const LangSwitcher = () => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.2rem',
+      background: 'rgba(255,255,255,0.18)',
+      borderRadius: '99px',
+      padding: '0.2rem',
+    }}>
+      {LANG_OPTIONS.map(opt => {
+        const isActive = lang === opt.code;
+        return (
+          <button
+            key={opt.code}
+            onClick={() => setLang(opt.code)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '99px',
+              border: 'none',
+              background: isActive ? '#fff' : 'transparent',
+              color: isActive ? '#FF5FA0' : 'rgba(255,255,255,0.8)',
+              fontFamily: F,
+              fontWeight: isActive ? 900 : 700,
+              fontSize: '0.7rem',
+              cursor: 'pointer',
+              boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+              transition: 'all 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {opt.flag} {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   // ── MAGIC CANVAS ──────────────────────────────────────────────────────────
   if (activeTab === 'magicCanvas') {
     return <MagicCanvasScreen onClose={() => setActiveTab('home')} />;
@@ -98,20 +150,21 @@ const App: React.FC = () => {
           width: '220px',
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(180deg, #fff0f8 0%, #f5f0ff 100%)',
+          background: 'linear-gradient(180deg, #ff80b5 0%, #7c6bff 100%)',
           borderRight: '4px solid #FFD6EC',
           flexShrink: 0,
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
           paddingLeft: 'env(safe-area-inset-left)',
         }}>
-          <div style={{ padding: '1.25rem 1rem 1rem', borderBottom: '3px solid #FFD6EC' }}>
-            <h1 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.3rem', color: '#FF5FA0', margin: 0, textShadow: '1px 2px 0 #ffd6e8' }}>
+          <div style={{ padding: '1.25rem 1rem 0.85rem', borderBottom: '3px solid rgba(255,255,255,0.3)' }}>
+            <h1 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.3rem', color: '#fff', margin: 0, textShadow: '1px 2px 0 rgba(0,0,0,0.15)' }}>
               🌈 LearnYourBaby
             </h1>
-            <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.7rem', color: '#7c6bff', margin: '0.2rem 0 0' }}>
-              English 🇬🇧 • नेपाली 🇳🇵 • 日本語 🇯🇵
-            </p>
+            {/* Language switcher in sidebar */}
+            <div style={{ marginTop: '0.6rem' }}>
+              <LangSwitcher />
+            </div>
           </div>
 
           {/* Stars badge */}
@@ -148,11 +201,12 @@ const App: React.FC = () => {
                     gap: '0.6rem',
                     padding: '0.7rem 0.85rem',
                     borderRadius: '1rem',
-                    border: isActive ? `2.5px solid ${tab.color}40` : '2.5px solid transparent',
-                    background: isActive ? `${tab.color}18` : 'transparent',
+                    border: isActive ? '2.5px solid rgba(255,255,255,0.6)' : '2.5px solid transparent',
+                    background: isActive ? 'rgba(255,255,255,0.25)' : 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                     textAlign: 'left',
+                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
                   <span style={{ fontSize: '1.35rem' }}>{tab.emoji}</span>
@@ -160,7 +214,7 @@ const App: React.FC = () => {
                     fontFamily: F,
                     fontWeight: isActive ? 900 : 700,
                     fontSize: '0.95rem',
-                    color: isActive ? tab.color : '#888',
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
                   }}>
                     {tab.label}
                   </span>
@@ -169,8 +223,8 @@ const App: React.FC = () => {
             })}
           </nav>
 
-          <div style={{ padding: '0.75rem 1rem', borderTop: '3px solid #FFD6EC', textAlign: 'center' }}>
-            <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: '#ccc', margin: 0 }}>Made with ❤️ for babies</p>
+          <div style={{ padding: '0.75rem 1rem', borderTop: '3px solid rgba(255,255,255,0.3)', textAlign: 'center' }}>
+            <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Made with ❤️ for babies</p>
           </div>
         </div>
 
@@ -214,45 +268,42 @@ const App: React.FC = () => {
         flexShrink: 0,
         background: 'linear-gradient(135deg, #ff80b5 0%, #ffb347 55%, #ffe066 100%)',
         borderBottom: '4px solid #ffb080',
-        padding: '0.55rem 1rem',
+        padding: '0.55rem 0.85rem',
         position: 'sticky',
         top: 0,
         zIndex: 20,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{
-              fontFamily: F,
-              fontWeight: 900,
-              fontSize: '1.25rem',
-              color: '#fff',
-              margin: 0,
-              lineHeight: 1.1,
-              textShadow: '1px 2px 0 rgba(0,0,0,0.12)',
-            }}>
-              🌈 LearnYourBaby
-            </h1>
-            <p style={{
-              fontFamily: F,
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              color: 'rgba(255,255,255,0.88)',
-              margin: 0,
-            }}>
-              English 🇬🇧 • नेपाली 🇳🇵 • 日本語 🇯🇵
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          {/* Title */}
+          <h1 style={{
+            fontFamily: F,
+            fontWeight: 900,
+            fontSize: '1.1rem',
+            color: '#fff',
+            margin: 0,
+            lineHeight: 1.1,
+            textShadow: '1px 2px 0 rgba(0,0,0,0.12)',
+            flexShrink: 0,
+          }}>
+            🌈 LearnYourBaby
+          </h1>
+
+          {/* Language switcher — EN / JA / NE */}
+          <LangSwitcher />
+
+          {/* Stars */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.25rem',
+            gap: '0.2rem',
             background: 'rgba(255,255,255,0.92)',
             borderRadius: '99px',
-            padding: '0.3rem 0.75rem',
+            padding: '0.25rem 0.6rem',
             boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            flexShrink: 0,
           }}>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-            <span style={{ fontFamily: F, fontWeight: 900, fontSize: '1.1rem', color: '#FF8C00' }}>
+            <span style={{ fontSize: '1rem' }}>⭐</span>
+            <span style={{ fontFamily: F, fontWeight: 900, fontSize: '1rem', color: '#FF8C00' }}>
               {safeStars}
             </span>
           </div>
