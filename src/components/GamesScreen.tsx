@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Trophy, RotateCcw, Zap, CheckCircle, XCircle, ArrowLeft, ChevronRight } from 'lucide-react';
 import { TrilingualWord, ClassLevel } from '../types';
 import { VOCABULARY } from '../data/vocabulary';
+import { useLang } from '../context/LanguageContext';
+import { Lang } from '../i18n';
 
 interface GamesScreenProps {
   onStarsEarned: (points: number) => void;
@@ -111,8 +113,18 @@ const OPTION_STYLE = [
   { label: 'D', base: 'bg-amber-50 border-2 border-amber-200 text-amber-900', chip: 'bg-amber-200 text-amber-700' },
 ];
 
-const PRAISE_RIGHT  = ['शाबास! 🎉', 'Perfect! ✨', 'Excellent! 🌟', 'Great! 🥳', 'すごい！🎊'];
-const PRAISE_WRONG  = ['कोसिस गर! 💪', 'Keep going! ✊', 'Try again! 🔁', 'Near miss! 😊'];
+// Per-language praise arrays — no Hindi anywhere
+const PRAISE_RIGHT_LANG: Record<Lang, string[]> = {
+  en: ['Well done! 🎉', 'Perfect! ✨', 'Excellent! 🌟', 'Great! 🥳', 'Awesome! 🎊'],
+  ja: ['よくできた！🎉', 'パーフェクト！✨', 'すごい！🌟', 'すばらしい！🥳', 'さいこう！🎊'],
+  ne: ['शाबास! 🎉', 'एकदम सही! ✨', 'उत्कृष्ट! 🌟', 'राम्रो! 🥳', 'अद्भुत! 🎊'],
+};
+
+const PRAISE_WRONG_LANG: Record<Lang, string[]> = {
+  en: ['Keep going! 💪', 'Try again! 🔁', 'You can do it! 😊', 'Almost! 🤗'],
+  ja: ['続けて！💪', 'もう一度！🔁', 'できるよ！😊', 'おしい！🤗'],
+  ne: ['कोसिस गर! 💪', 'फेरि प्रयास! 🔁', 'तपाईं सक्नुहुन्छ! 😊', 'नजिक! 🤗'],
+};
 
 // ===========================
 // LEVEL SELECT SCREEN
@@ -121,6 +133,8 @@ const LevelSelectScreen: React.FC<{
   onSelect: (l: ClassLevel) => void;
   onBack: () => void;
 }> = ({ onSelect, onBack }) => {
+  const { t } = useLang();
+
   const getBest = (id: string): number => {
     try { return JSON.parse(localStorage.getItem('lybQuizBest') || '{}')[id] || 0; }
     catch { return 0; }
@@ -134,8 +148,8 @@ const LevelSelectScreen: React.FC<{
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h2 className="font-extrabold text-lg leading-tight">📝 MCQ Quiz</h2>
-          <p className="text-xs text-base-content/50">आफ्नो level छान्नुस् / Pick your level</p>
+          <h2 className="font-extrabold text-lg leading-tight">📝 {t.quizTitle}</h2>
+          <p className="text-xs text-base-content/50">{t.pickLevel}</p>
         </div>
       </div>
 
@@ -196,6 +210,7 @@ const QuizGame: React.FC<{
   onComplete: () => void;
   onBack: () => void;
 }> = ({ level, onStarsEarned, onComplete, onBack }) => {
+  const { lang, t } = useLang();
   const cfg = LEVEL_CONFIGS.find(c => c.id === level)!;
 
   const [questions, setQuestions]       = useState<QuizQuestion[]>([]);
@@ -212,7 +227,6 @@ const QuizGame: React.FC<{
       .slice(0, cfg.questionsPerQuiz)
       .map(word => ({
         word,
-        // ✅ FIX: shuffle options so correct answer is never always first
         shuffledOptions: shuffleArray([...word.interactive_quiz.options]),
       }));
   }, [level, cfg.questionsPerQuiz]);
@@ -240,17 +254,19 @@ const QuizGame: React.FC<{
 
     if (isCorrect) setScore(newScore);
 
+    const praiseRight = PRAISE_RIGHT_LANG[lang];
+    const praiseWrong = PRAISE_WRONG_LANG[lang];
+
     setFeedback({
       text: isCorrect
-        ? PRAISE_RIGHT[Math.floor(Math.random() * PRAISE_RIGHT.length)]
-        : PRAISE_WRONG[Math.floor(Math.random() * PRAISE_WRONG.length)],
+        ? praiseRight[Math.floor(Math.random() * praiseRight.length)]
+        : praiseWrong[Math.floor(Math.random() * praiseWrong.length)],
       ok: isCorrect,
     });
 
     setTimeout(() => {
       setFeedback(null);
       if (qi + 1 >= questions.length) {
-        // Save best score
         try {
           const bests = JSON.parse(localStorage.getItem('lybQuizBest') || '{}');
           bests[level] = Math.max(bests[level] || 0, newScore);
@@ -269,14 +285,14 @@ const QuizGame: React.FC<{
   if (done) {
     const pct   = totalPossible > 0 ? Math.round((score / totalPossible) * 100) : 0;
     const medal = pct >= 80 ? '🏆' : pct >= 50 ? '🌟' : '💪';
-    const msg   = pct >= 80 ? 'Excellent! शाबास! 🎉' : pct >= 50 ? 'Good job! राम्रो! 👏' : 'Keep practicing! कोसिस गरौं! 💪';
+    const msg   = pct >= 80 ? t.quizResultExcellent : pct >= 50 ? t.quizResultGood : t.quizResultKeepGoing;
 
     return (
       <div className="flex flex-col items-center justify-center h-full px-6 text-center gap-4">
         <div className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center text-5xl shadow-lg`}>
           {medal}
         </div>
-        <h2 className="text-2xl font-extrabold">Quiz Complete!</h2>
+        <h2 className="text-2xl font-extrabold">{t.quizComplete}</h2>
         <span className={`px-4 py-1 rounded-full text-sm font-bold ${cfg.badgeBg} ${cfg.badgeText}`}>
           {cfg.emoji} {cfg.label} · {cfg.ageRange}
         </span>
@@ -305,10 +321,10 @@ const QuizGame: React.FC<{
               setQuestions(qs); setQi(0); setSelected(null); setScore(0); setDone(false); setFeedback(null);
             }}
           >
-            <RotateCcw size={14} /> Play Again
+            <RotateCcw size={14} /> {t.playAgain}
           </button>
           <button className="btn btn-sm btn-outline rounded-xl" onClick={() => { onComplete(); onBack(); }}>
-            Back
+            {t.back}
           </button>
         </div>
       </div>
@@ -367,7 +383,7 @@ const QuizGame: React.FC<{
         </p>
       </div>
 
-      {/* Options grid — 2 cols for 4 options, 1 col for 3 */}
+      {/* Options grid */}
       <div className={`grid gap-2.5 ${numOpts === 4 ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {shuffledOptions.map((opt, idx) => {
           const os  = OPTION_STYLE[idx % OPTION_STYLE.length];
@@ -391,16 +407,13 @@ const QuizGame: React.FC<{
               onClick={() => handleAnswer(opt)}
               disabled={isAnswered}
             >
-              {/* Letter chip */}
               <span
                 className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold
                   ${isAnswered && (isCorrect || isThis) ? 'bg-white/30 text-white' : os.chip}`}
               >
                 {os.label}
               </span>
-
               <span className="flex-1 leading-snug">{opt}</span>
-
               {isAnswered && isCorrect && <CheckCircle size={16} className="flex-shrink-0" />}
               {isAnswered && isThis && !isCorrect && <XCircle size={16} className="flex-shrink-0" />}
             </button>
@@ -424,7 +437,7 @@ const QuizGame: React.FC<{
 };
 
 // ===========================
-// MATCHING GAME (unchanged)
+// MATCHING GAME
 // ===========================
 interface MatchTile {
   id: string;
@@ -438,11 +451,12 @@ const MatchingGame: React.FC<{
   onGamePlayed: () => void;
   onBack: () => void;
 }> = ({ onStarsEarned, onGamePlayed, onBack }) => {
-  const [tiles, setTiles]             = useState<MatchTile[]>([]);
+  const { t } = useLang();
+  const [tiles, setTiles]               = useState<MatchTile[]>([]);
   const [selectedTile, setSelectedTile] = useState<string | null>(null);
-  const [wrongPair, setWrongPair]     = useState<string[]>([]);
-  const [score, setScore]             = useState(0);
-  const [done, setDone]               = useState(false);
+  const [wrongPair, setWrongPair]       = useState<string[]>([]);
+  const [score, setScore]               = useState(0);
+  const [done, setDone]                 = useState(false);
 
   const initGame = useCallback(() => {
     const words = shuffleArray(VOCABULARY).slice(0, 6);
@@ -467,10 +481,10 @@ const MatchingGame: React.FC<{
     if (!first) return;
 
     if (first.pairId === tile.pairId) {
-      const updated = tiles.map(t => t.pairId === tile.pairId ? { ...t, matched: true } : t);
+      const updated = tiles.map(ti => ti.pairId === tile.pairId ? { ...ti, matched: true } : ti);
       const newScore = score + 15;
       setTiles(updated); setScore(newScore); setSelectedTile(null);
-      if (updated.every(t => t.matched)) { onStarsEarned(newScore); onGamePlayed(); setDone(true); }
+      if (updated.every(ti => ti.matched)) { onStarsEarned(newScore); onGamePlayed(); setDone(true); }
     } else {
       setWrongPair([selectedTile, tileId]);
       setTimeout(() => { setWrongPair([]); setSelectedTile(null); }, 800);
@@ -480,12 +494,12 @@ const MatchingGame: React.FC<{
   if (done) return (
     <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-3">
       <span className="text-6xl">🏆</span>
-      <h2 className="text-2xl font-extrabold">All Matched!</h2>
+      <h2 className="text-2xl font-extrabold">{t.allMatched}</h2>
       <p className="text-4xl font-bold text-amber-500">⭐ {score}</p>
-      <p className="text-base-content/60">बहुत बढ़िया! Great job!</p>
+      <p className="text-base-content/60">{t.matchWell}</p>
       <div className="flex gap-2 mt-2">
-        <button className="btn btn-primary btn-sm rounded-xl" onClick={initGame}><RotateCcw size={14} /> Play Again</button>
-        <button className="btn btn-outline btn-sm rounded-xl" onClick={onBack}>Back</button>
+        <button className="btn btn-primary btn-sm rounded-xl" onClick={initGame}><RotateCcw size={14} /> {t.playAgain}</button>
+        <button className="btn btn-outline btn-sm rounded-xl" onClick={onBack}>{t.back}</button>
       </div>
     </div>
   );
@@ -495,7 +509,7 @@ const MatchingGame: React.FC<{
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <button className="btn btn-ghost btn-sm btn-circle" onClick={onBack}><ArrowLeft size={16} /></button>
-          <h3 className="font-bold">🎯 Match English ↔ Japanese</h3>
+          <h3 className="font-bold">{t.matchHeading}</h3>
         </div>
         <span className="font-bold text-amber-500">⭐ {score}</span>
       </div>
@@ -522,7 +536,8 @@ const MatchingGame: React.FC<{
 // MAIN GAMES SCREEN
 // ===========================
 export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizCompleted, onGamePlayed }) => {
-  const [mode, setMode]               = useState<GameMode>('menu');
+  const { t } = useLang();
+  const [mode, setMode]                   = useState<GameMode>('menu');
   const [selectedLevel, setSelectedLevel] = useState<ClassLevel | null>(null);
 
   if (mode === 'levelSelect') {
@@ -553,8 +568,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
   return (
     <div className="p-4">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-extrabold">🎮 Fun Games!</h2>
-        <p className="text-base-content/60 mt-1">खेल–खेल मा सीखौं!</p>
+        <h2 className="text-2xl font-extrabold">{t.gamesHeading}</h2>
+        <p className="text-base-content/60 mt-1">{t.gamesSubtitle}</p>
       </div>
 
       <div className="space-y-4 max-w-sm mx-auto">
@@ -567,8 +582,8 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
             📝
           </div>
           <div className="flex-1">
-            <h3 className="font-extrabold text-lg">MCQ Quiz</h3>
-            <p className="text-sm text-base-content/60">Nursery देखि Class 4–5 सम्म</p>
+            <h3 className="font-extrabold text-lg">{t.quizTitle}</h3>
+            <p className="text-sm text-base-content/60">{t.quizLevelRange}</p>
             <div className="flex gap-1 mt-1 flex-wrap">
               {LEVEL_CONFIGS.map(l => (
                 <span key={l.id} className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${l.badgeBg} ${l.badgeText}`}>{l.emoji} {l.label}</span>
@@ -587,9 +602,9 @@ export const GamesScreen: React.FC<GamesScreenProps> = ({ onStarsEarned, onQuizC
             🧩
           </div>
           <div className="flex-1">
-            <h3 className="font-extrabold text-lg">Matching Game</h3>
-            <p className="text-sm text-base-content/60">English शब्द र Japanese मिलाउनुस्!</p>
-            <p className="text-xs text-base-content/40 mt-0.5">6 जोडी मिलाउनुस् • ⭐ 15 Stars each</p>
+            <h3 className="font-extrabold text-lg">{t.matchTitle}</h3>
+            <p className="text-sm text-base-content/60">{t.matchDesc}</p>
+            <p className="text-xs text-base-content/40 mt-0.5">{t.matchPairs}</p>
           </div>
           <Trophy className="text-cyan-400 flex-shrink-0" size={24} />
         </button>
