@@ -4,7 +4,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 type Point      = { x: number; y: number };
 type LetterMode = 'off' | 'upper' | 'lower';
 
-// ── Fun color palettes ──────────────────────────────────────────
+// ── Color palettes ──────────────────────────────────────────────
 const RAINBOW_COLORS = [
   '#FF6B6B','#FF9F43','#FECA57','#48DBFB',
   '#FF6FF2','#55EFC4','#A29BFE','#FD79A8',
@@ -12,17 +12,15 @@ const RAINBOW_COLORS = [
 ];
 
 const BRUSH_SIZES = [
-  { label: '●',  size: 8,  emoji: '🔹' },
-  { label: '●',  size: 16, emoji: '🔸' },
-  { label: '●',  size: 28, emoji: '🟡' },
-  { label: '●',  size: 48, emoji: '🟠' },
-  { label: '●',  size: 76, emoji: '🔴' },
+  { size: 8  },
+  { size: 16 },
+  { size: 28 },
+  { size: 48 },
 ];
 
 const UPPER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const LOWER_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-// Fun colors per letter for the guide
 const LETTER_COLORS = [
   '#FF6B6B','#FF9F43','#FECA57','#55EFC4','#48DBFB','#A29BFE','#FF6FF2',
   '#FD79A8','#00D2D3','#FF9FF3','#54A0FF','#5F27CD','#FF6B6B','#FF9F43',
@@ -30,9 +28,8 @@ const LETTER_COLORS = [
   '#FF9FF3','#54A0FF','#5F27CD','#FF6B6B','#FF9F43',
 ];
 
-// ── Confetti particle ───────────────────────────────────────────
+// ── Confetti ────────────────────────────────────────────────────
 interface ConfettiPiece { id: number; x: number; y: number; color: string; rot: number; scale: number; delay: number; }
-
 let confettiId = 0;
 const makeConfetti = (count: number): ConfettiPiece[] =>
   Array.from({ length: count }, () => ({
@@ -48,16 +45,16 @@ const makeConfetti = (count: number): ConfettiPiece[] =>
 // ── Props ────────────────────────────────────────────────────────
 interface Props { onClose: () => void; }
 
-// ── CSS keyframes (injected once) ────────────────────────────────
+// ── CSS keyframes ────────────────────────────────────────────────
 const ANIM_STYLE = `
 @keyframes mc-confetti-fall {
   0%   { transform: translateY(0) rotate(0deg) scale(var(--s)); opacity: 1; }
   100% { transform: translateY(105vh) rotate(720deg) scale(var(--s)); opacity: 0; }
 }
 @keyframes mc-bounce-in {
-  0%   { transform: scale(0); opacity: 0; }
-  50%  { transform: scale(1.3); }
-  100% { transform: scale(1); opacity: 1; }
+  0%   { transform: scale(0) translateZ(0); opacity: 0; }
+  50%  { transform: scale(1.3) translateZ(40px); }
+  100% { transform: scale(1) translateZ(0); opacity: 1; }
 }
 @keyframes mc-pulse {
   0%, 100% { transform: scale(1); }
@@ -81,6 +78,33 @@ const ANIM_STYLE = `
   60%  { transform: scale(1.4) rotate(10deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
+@keyframes mc-3d-float {
+  0%, 100% { transform: perspective(600px) rotateX(0deg) rotateY(0deg) translateZ(0); }
+  25%  { transform: perspective(600px) rotateX(2deg) rotateY(-1deg) translateZ(4px); }
+  50%  { transform: perspective(600px) rotateX(0deg) rotateY(2deg) translateZ(8px); }
+  75%  { transform: perspective(600px) rotateX(-2deg) rotateY(-1deg) translateZ(4px); }
+}
+@keyframes mc-glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(255,255,255,0.1), 0 8px 32px rgba(0,0,0,0.12); }
+  50%      { box-shadow: 0 0 25px rgba(255,255,255,0.2), 0 12px 40px rgba(0,0,0,0.18); }
+}
+@keyframes mc-toolbar-rise {
+  0%   { transform: translateY(100%) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes mc-color-pop {
+  0%   { transform: scale(0) rotate(-45deg); }
+  60%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes mc-header-slide {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes mc-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 `;
 
 // ── Component ────────────────────────────────────────────────────
@@ -89,8 +113,8 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   const lastPt     = useRef<Point | null>(null);
   const isDrawing  = useRef(false);
 
-  const [color,      setColor]      = useState(RAINBOW_COLORS[4]); // pink
-  const [brushIdx,   setBrushIdx]   = useState(2);
+  const [color,      setColor]      = useState(RAINBOW_COLORS[4]);
+  const [brushIdx,   setBrushIdx]   = useState(1);
   const [isEraser,   setIsEraser]   = useState(false);
   const [history,    setHistory]    = useState<ImageData[]>([]);
   const [letterMode, setLetterMode] = useState<LetterMode>('off');
@@ -99,7 +123,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   const [completed,  setCompleted]  = useState<Set<number>>(new Set());
   const [confetti,   setConfetti]   = useState<ConfettiPiece[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [hasDrawn,   setHasDrawn]   = useState(false); // track if child actually drew something
+  const [hasDrawn,   setHasDrawn]   = useState(false);
 
   const brushSize     = BRUSH_SIZES[brushIdx].size;
   const letters       = letterMode === 'upper' ? UPPER_LETTERS
@@ -122,7 +146,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   const clearCanvas = useCallback((ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!isLetterMode) {
-      // Fun gradient background in free mode
       const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       g.addColorStop(0, '#ffecd2');
       g.addColorStop(0.5, '#fcb69f');
@@ -132,7 +155,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     }
   }, [isLetterMode]);
 
-  // ── Fill canvas on mount ──────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -142,7 +164,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-clear when letter/mode changes ─────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -150,7 +171,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     if (!ctx) return;
     clearCanvas(ctx, canvas);
     setHistory([]);
-    setHasDrawn(false); // reset drawing flag for each new letter
+    setHasDrawn(false);
     setTick(t => t + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letterMode, letterIdx]);
@@ -203,7 +224,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       e.currentTarget.setPointerCapture(e.pointerId);
       saveSnapshot();
-      if (!isEraser) setHasDrawn(true); // child is drawing — unlock Done button
+      if (!isEraser) setHasDrawn(true);
       const pt = getPoint(e);
       lastPt.current    = pt;
       isDrawing.current = true;
@@ -265,7 +286,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
     lastPt.current    = null;
   }, []);
 
-  // ── Letter navigation with celebration ────────────────────────
+  // ── Letter navigation ─────────────────────────────────────────
   const markDoneAndNext = useCallback(() => {
     setCompleted(prev => new Set(prev).add(letterIdx));
     setConfetti(makeConfetti(40));
@@ -292,6 +313,10 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
   const starsEarned = completed.size;
   const progressPct = isLetterMode ? ((starsEarned) / 26) * 100 : 0;
 
+  // Split colors into 2 rows
+  const colorsRow1 = RAINBOW_COLORS.slice(0, 6);
+  const colorsRow2 = RAINBOW_COLORS.slice(6, 12);
+
   // ── Render ────────────────────────────────────────────────────
   return (
     <div
@@ -299,7 +324,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
       style={{
         background:    isLetterMode
           ? `linear-gradient(135deg, ${letterColor}15, #fff5f5, ${letterColor}10)`
-          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          : 'linear-gradient(150deg, #0f0c29 0%, #302b63 40%, #24243e 100%)',
         paddingTop:    'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft:   'env(safe-area-inset-left)',
@@ -319,7 +344,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
                 width:     12 * c.scale,
                 height:    12 * c.scale,
                 background: c.color,
-                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                borderRadius: Math.random() > 0.5 ? '50%' : '3px',
                 // @ts-ignore
                 '--s':     c.scale,
                 animation: `mc-confetti-fall 2s ${c.delay}s ease-in forwards`,
@@ -355,36 +380,48 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
         </div>
       )}
 
-      {/* ── Top bar ──────────────────────────────────────────── */}
+      {/* ── Top bar (3D glassmorphism) ───────────────────────── */}
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
+        className="flex items-center justify-between px-4 py-2.5 shrink-0"
         style={{
           background: isLetterMode
-            ? 'rgba(255,255,255,0.9)'
-            : 'rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(12px)',
-          borderBottom:   isLetterMode
-            ? `3px solid ${letterColor}40`
-            : '1px solid rgba(255,255,255,0.2)',
+            ? 'rgba(255,255,255,0.85)'
+            : 'rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: isLetterMode
+            ? `2px solid ${letterColor}30`
+            : '1px solid rgba(255,255,255,0.1)',
+          animation: 'mc-header-slide 0.4s ease-out',
         }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl" style={{ animation: 'mc-float 2s ease-in-out infinite' }}>🎨</span>
+          <span
+            className="text-2xl"
+            style={{
+              animation: 'mc-3d-float 4s ease-in-out infinite',
+              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.15))',
+            }}
+          >
+            🎨
+          </span>
           <div>
             <p
-              className="font-black text-base leading-none"
+              className="font-black text-base leading-none tracking-tight"
               style={{
-                color: isLetterMode ? '#2d3436' : '#fff',
-                background: isLetterMode ? `linear-gradient(90deg, ${letterColor}, #FF6FF2)` : 'none',
-                WebkitBackgroundClip: isLetterMode ? 'text' : 'unset',
-                WebkitTextFillColor: isLetterMode ? 'transparent' : 'unset',
+                color: isLetterMode ? '#1a1a2e' : '#fff',
+                ...(isLetterMode ? {
+                  background: `linear-gradient(90deg, ${letterColor}, #FF6FF2)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                } : {}),
               } as React.CSSProperties}
             >
               Magic Canvas
             </p>
             <p
-              className="text-xs font-bold mt-0.5"
-              style={{ color: isLetterMode ? '#636e72' : 'rgba(255,255,255,0.7)' }}
+              className="text-[11px] font-semibold mt-0.5"
+              style={{ color: isLetterMode ? '#636e72' : 'rgba(255,255,255,0.55)' }}
             >
               {isLetterMode
                 ? `✏️ Trace the letter — you got this! 💪`
@@ -398,11 +435,14 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
             onClick={cycleLetterMode}
             className="px-4 py-2 rounded-2xl text-sm font-black transition-all active:scale-95"
             style={{
-              background:    isLetterMode
+              background: isLetterMode
                 ? `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 3) % 26]})`
-                : 'rgba(255,255,255,0.25)',
-              color:         '#fff',
-              boxShadow:     isLetterMode ? `0 4px 15px ${letterColor}60` : 'none',
+                : 'rgba(255,255,255,0.15)',
+              color:     '#fff',
+              boxShadow: isLetterMode
+                ? `0 4px 20px ${letterColor}50`
+                : '0 2px 10px rgba(0,0,0,0.15)',
+              border:    isLetterMode ? 'none' : '1px solid rgba(255,255,255,0.15)',
             }}
           >
             {modeBtnLabel}
@@ -411,8 +451,9 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
             onClick={onClose}
             className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold active:scale-95 transition-all"
             style={{
-              background: isLetterMode ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.2)',
+              background: isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
               color:      isLetterMode ? '#636e72' : '#fff',
+              border:     isLetterMode ? 'none' : '1px solid rgba(255,255,255,0.1)',
             }}
           >
             ✕
@@ -424,7 +465,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
       {isLetterMode && (
         <div className="shrink-0 px-4 py-1.5" style={{ background: 'rgba(255,255,255,0.6)' }}>
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
+            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.06)' }}>
               <div
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
@@ -460,7 +501,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
           >
             ‹
           </button>
-
           <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1" style={{ scrollbarWidth: 'none' }}>
             {letters.map((ltr, i) => {
               const lc = LETTER_COLORS[i];
@@ -494,7 +534,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
               );
             })}
           </div>
-
           <button
             onClick={() => { if (letterIdx < 25) setLetterIdx(i => i + 1); }}
             disabled={letterIdx === 25}
@@ -511,20 +550,24 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
         className="flex-1 overflow-hidden relative"
         style={{
           background: isLetterMode ? '#fff' : 'transparent',
-          borderRadius: isLetterMode ? '20px' : 0,
-          margin:       isLetterMode ? '6px 8px' : 0,
-          boxShadow:    isLetterMode ? `0 4px 30px ${letterColor}25, inset 0 0 60px ${letterColor}08` : 'none',
-          border:       isLetterMode ? `3px solid ${letterColor}30` : 'none',
+          borderRadius: isLetterMode ? '24px' : '16px',
+          margin:       isLetterMode ? '6px 8px' : '6px 8px',
+          boxShadow:    isLetterMode
+            ? `0 8px 40px ${letterColor}20, inset 0 0 60px ${letterColor}06`
+            : '0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          border:       isLetterMode
+            ? `2px solid ${letterColor}25`
+            : '1px solid rgba(255,255,255,0.08)',
+          animation: 'mc-glow-pulse 4s ease-in-out infinite',
         }}
       >
-        {/* ── Fun guide lines (letter mode) ──────────────────── */}
+        {/* ── Guide lines (letter mode) ──────────────────────── */}
         {isLetterMode && (
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
             style={{ zIndex: 0 }}
             preserveAspectRatio="none"
           >
-            {/* Dashed guide lines like ruled paper */}
             {[25, 50, 75].map(pct => (
               <line
                 key={pct}
@@ -534,7 +577,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
                 strokeDasharray="8 6"
               />
             ))}
-            {/* Baseline */}
             <line
               x1="0" y1="73%" x2="100%" y2="73%"
               stroke={`${letterColor}35`}
@@ -549,7 +591,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
             className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
             style={{ zIndex: 1 }}
           >
-            {/* Big colorful faint letter */}
             <span
               className="absolute"
               style={{
@@ -563,7 +604,6 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
             >
               {currentLetter}
             </span>
-            {/* Dotted outline — tracing guide */}
             <span
               className="absolute"
               style={{
@@ -581,7 +621,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
           </div>
         )}
 
-        {/* ── Sparkle decorations in corners ──────────────────── */}
+        {/* ── Sparkle decorations ────────────────────────────── */}
         {isLetterMode && (
           <>
             {[
@@ -623,10 +663,9 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
           onPointerCancel={onPointerUp}
         />
 
-        {/* ── "Done ✓ Next" floating button ──────────────────── */}
+        {/* ── "Done ✓ Next" button ───────────────────────────── */}
         {isLetterMode && letterIdx <= 25 && !showCelebration && (
           <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1" style={{ zIndex: 3 }}>
-            {/* Hint label when not drawn yet */}
             {!hasDrawn && (
               <span
                 className="text-xs font-bold px-3 py-1 rounded-full"
@@ -662,7 +701,7 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
           </div>
         )}
 
-        {/* ── Current letter indicator (big, top-left) ────────── */}
+        {/* ── Current letter indicator ────────────────────────── */}
         {isLetterMode && (
           <div
             className="absolute top-3 left-3 w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl"
@@ -670,8 +709,8 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
               zIndex:     3,
               background: `linear-gradient(135deg, ${letterColor}, ${LETTER_COLORS[(letterIdx + 4) % 26]})`,
               color:      '#fff',
-              boxShadow:  `0 4px 15px ${letterColor}40`,
-              animation:  'mc-pulse 2s ease-in-out infinite',
+              boxShadow:  `0 6px 20px ${letterColor}40`,
+              animation:  'mc-3d-float 4s ease-in-out infinite',
             }}
           >
             {currentLetter}
@@ -679,81 +718,108 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
         )}
       </div>
 
-      {/* ── Bottom toolbar ────────────────────────────────────── */}
+      {/* ── Bottom toolbar (premium glass panel) ──────────────── */}
       <div
-        className="shrink-0 px-4 pt-2.5 pb-3"
+        className="shrink-0 px-4 pt-3 pb-4"
         style={{
-          background:    isLetterMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.3)',
-          backdropFilter: 'blur(12px)',
-          borderTop:     isLetterMode ? `2px solid ${letterColor}25` : '1px solid rgba(255,255,255,0.15)',
+          background:    isLetterMode
+            ? 'rgba(255,255,255,0.9)'
+            : 'rgba(15,12,41,0.65)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderTop:     isLetterMode
+            ? `2px solid ${letterColor}20`
+            : '1px solid rgba(255,255,255,0.08)',
+          animation: 'mc-toolbar-rise 0.5s ease-out',
         }}
       >
-        {/* Color row */}
-        <div className="flex items-center justify-center gap-2 mb-2.5 flex-wrap">
-          {RAINBOW_COLORS.map((c, i) => (
-            <button
-              key={c}
-              onClick={() => { setColor(c); setIsEraser(false); }}
-              className="rounded-full transition-all active:scale-125"
-              style={{
-                width:         !isEraser && color === c ? 40 : 32,
-                height:        !isEraser && color === c ? 40 : 32,
-                background:    `linear-gradient(135deg, ${c}, ${RAINBOW_COLORS[(i + 3) % RAINBOW_COLORS.length]})`,
-                outline:       !isEraser && color === c
-                                 ? `3px solid ${c}`
-                                 : 'none',
-                outlineOffset: '3px',
-                boxShadow:     !isEraser && color === c
-                                 ? `0 0 12px ${c}60`
-                                 : `0 2px 6px ${c}30`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Brush + tools row */}
-        <div className="flex items-center justify-between gap-2">
+        {/* ── Row 1: Pencil sizes + Color Row 1 ──────────────── */}
+        <div className="flex items-center gap-2 mb-2">
           {/* Brush sizes */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {BRUSH_SIZES.map((b, i) => (
               <button
                 key={b.size}
                 onClick={() => { setBrushIdx(i); setIsEraser(false); }}
                 className="rounded-full flex items-center justify-center transition-all active:scale-110"
                 style={{
-                  width:         36,
-                  height:        36,
-                  background:    !isEraser && brushIdx === i
-                                   ? `linear-gradient(135deg, ${color}, ${RAINBOW_COLORS[(RAINBOW_COLORS.indexOf(color) + 3) % RAINBOW_COLORS.length]})`
-                                   : isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                  boxShadow:     !isEraser && brushIdx === i ? `0 3px 10px ${color}50` : 'none',
-                  outline:       !isEraser && brushIdx === i ? '2px solid rgba(255,255,255,0.8)' : 'none',
-                  outlineOffset: '2px',
+                  width:  34,
+                  height: 34,
+                  background: !isEraser && brushIdx === i
+                    ? `linear-gradient(135deg, ${color}, ${RAINBOW_COLORS[(RAINBOW_COLORS.indexOf(color) + 3) % RAINBOW_COLORS.length]})`
+                    : isLetterMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
+                  boxShadow: !isEraser && brushIdx === i
+                    ? `0 4px 14px ${color}40`
+                    : 'none',
+                  border: !isEraser && brushIdx === i
+                    ? '2px solid rgba(255,255,255,0.7)'
+                    : isLetterMode ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.06)',
                 }}
               >
                 <div
                   className="rounded-full"
                   style={{
-                    width:      6 + i * 5,
-                    height:     6 + i * 5,
-                    background: !isEraser && brushIdx === i ? '#fff' : (isLetterMode ? '#999' : 'rgba(255,255,255,0.5)'),
+                    width:      5 + i * 5,
+                    height:     5 + i * 5,
+                    background: !isEraser && brushIdx === i
+                      ? '#fff'
+                      : isLetterMode ? '#aaa' : 'rgba(255,255,255,0.4)',
                   }}
                 />
               </button>
             ))}
           </div>
 
+          {/* Divider */}
+          <div
+            className="w-px h-7 mx-1"
+            style={{
+              background: isLetterMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)',
+            }}
+          />
+
+          {/* Color Row 1 (first 6 colors) */}
+          <div className="flex items-center gap-1.5 flex-1 justify-center">
+            {colorsRow1.map((c, idx) => {
+              const i = idx;
+              return (
+                <button
+                  key={c}
+                  onClick={() => { setColor(c); setIsEraser(false); }}
+                  className="rounded-full transition-all active:scale-125"
+                  style={{
+                    width:  !isEraser && color === c ? 34 : 28,
+                    height: !isEraser && color === c ? 34 : 28,
+                    background: `linear-gradient(135deg, ${c}, ${RAINBOW_COLORS[(i + 3) % RAINBOW_COLORS.length]})`,
+                    outline: !isEraser && color === c
+                      ? `2.5px solid ${c}`
+                      : 'none',
+                    outlineOffset: '3px',
+                    boxShadow: !isEraser && color === c
+                      ? `0 0 16px ${c}50, 0 4px 12px ${c}30`
+                      : `0 2px 8px ${c}25`,
+                    animation: !isEraser && color === c ? 'mc-color-pop 0.3s ease-out' : 'none',
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Row 2: Tools + Color Row 2 ─────────────────────── */}
+        <div className="flex items-center gap-2">
           {/* Tools */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setIsEraser(e => !e)}
-              className="px-3 py-2 rounded-2xl text-base font-bold transition-all active:scale-95"
+              className="w-[34px] h-[34px] rounded-xl flex items-center justify-center text-base transition-all active:scale-95"
               style={{
                 background: isEraser
                   ? 'linear-gradient(135deg, #FF6B6B, #ee5a24)'
-                  : isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                boxShadow:  isEraser ? '0 3px 10px rgba(255,107,107,0.4)' : 'none',
-                color:       isLetterMode && !isEraser ? '#636e72' : '#fff',
+                  : isLetterMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
+                boxShadow: isEraser ? '0 4px 14px rgba(255,107,107,0.4)' : 'none',
+                border: isEraser ? 'none'
+                  : isLetterMode ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.06)',
               }}
             >
               🧹
@@ -761,24 +827,59 @@ export const MagicCanvasScreen: React.FC<Props> = ({ onClose }) => {
             <button
               onClick={undo}
               disabled={history.length === 0}
-              className="px-3 py-2 rounded-2xl text-base font-bold disabled:opacity-25 active:scale-95 transition-all"
+              className="w-[34px] h-[34px] rounded-xl flex items-center justify-center text-base disabled:opacity-20 active:scale-95 transition-all"
               style={{
-                background: isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                color:      isLetterMode ? '#636e72' : '#fff',
+                background: isLetterMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
+                border: isLetterMode ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.06)',
               }}
             >
               ↩️
             </button>
             <button
               onClick={clear}
-              className="px-3 py-2 rounded-2xl text-base font-bold active:scale-95 transition-all"
+              className="w-[34px] h-[34px] rounded-xl flex items-center justify-center text-base active:scale-95 transition-all"
               style={{
-                background: isLetterMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
-                color:      isLetterMode ? '#636e72' : '#fff',
+                background: isLetterMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
+                border: isLetterMode ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.06)',
               }}
             >
               🗑️
             </button>
+          </div>
+
+          {/* Divider */}
+          <div
+            className="w-px h-7 mx-1"
+            style={{
+              background: isLetterMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)',
+            }}
+          />
+
+          {/* Color Row 2 (last 6 colors) */}
+          <div className="flex items-center gap-1.5 flex-1 justify-center">
+            {colorsRow2.map((c, idx) => {
+              const i = idx + 6;
+              return (
+                <button
+                  key={c}
+                  onClick={() => { setColor(c); setIsEraser(false); }}
+                  className="rounded-full transition-all active:scale-125"
+                  style={{
+                    width:  !isEraser && color === c ? 34 : 28,
+                    height: !isEraser && color === c ? 34 : 28,
+                    background: `linear-gradient(135deg, ${c}, ${RAINBOW_COLORS[(i + 3) % RAINBOW_COLORS.length]})`,
+                    outline: !isEraser && color === c
+                      ? `2.5px solid ${c}`
+                      : 'none',
+                    outlineOffset: '3px',
+                    boxShadow: !isEraser && color === c
+                      ? `0 0 16px ${c}50, 0 4px 12px ${c}30`
+                      : `0 2px 8px ${c}25`,
+                    animation: !isEraser && color === c ? 'mc-color-pop 0.3s ease-out' : 'none',
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
