@@ -8,38 +8,15 @@ import { FloatingPlaygroundScreen } from './components/FloatingPlaygroundScreen'
 import { MagicCanvasScreen } from './components/MagicCanvasScreen';
 import { useIsPad } from './hooks/useIsPad';
 import { useLang } from './context/LanguageContext';
-import { Lang } from './i18n';
+import { Lang, LANG_FLAGS, LANG_LABELS } from './i18n';
 
 const F = "'Nunito', 'Baloo 2', sans-serif";
 
-type Tab = {
-  id: TabId;
-  label: string;
-  emoji: string;
-  color: string;
-};
-
-const TABS: Tab[] = [
-  { id: 'home',               label: 'Learn',    emoji: '📚', color: '#FF6BAA' },
-  { id: 'sumi',               label: 'Sumi AI',  emoji: '✨', color: '#7c6bff' },
-  { id: 'games',              label: 'Games',    emoji: '🎮', color: '#3B9EFF' },
-  { id: 'magicCanvas',        label: 'Canvas',   emoji: '🎨', color: '#ED6E1C' },
-  { id: 'stars',              label: 'Stars',    emoji: '🏆', color: '#FFB800' },
-  { id: 'floatingPlayground', label: 'Play',     emoji: '🎈', color: '#38A169' },
-];
-
-const LANG_OPTIONS: { code: Lang; flag: string; label: string }[] = [
-  { code: 'en', flag: '🇬🇧', label: 'EN' },
-  { code: 'ja', flag: '🇯🇵', label: 'JA' },
-  { code: 'ne', flag: '🇳🇵', label: 'NE' },
-];
-
 const App: React.FC = () => {
+  const { lang, setLang, t } = useLang();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [isKioskMode, setIsKioskMode] = useState(false);
   const isPad = useIsPad();
-  const { lang, setLang } = useLang();
-
   const [progress, setProgress] = useState<UserProgress>({
     totalStars: 0,
     wordsLearned: [],
@@ -70,6 +47,53 @@ const App: React.FC = () => {
   const handleQuizCompleted = ()               => setProgress(p => ({ ...p, quizzesCompleted: p.quizzesCompleted + 1 }));
   const handleGamePlayed    = ()               => setProgress(p => ({ ...p, gamesPlayed: p.gamesPlayed + 1 }));
 
+  // Dynamic tabs built from translations
+  const TABS = [
+    { id: 'home' as TabId,               label: t.tabLearn,    emoji: '📚', color: '#FF6BAA' },
+    { id: 'sumi' as TabId,               label: t.tabSumi,     emoji: '✨', color: '#7c6bff' },
+    { id: 'games' as TabId,              label: t.tabGames,    emoji: '🎮', color: '#3B9EFF' },
+    { id: 'magicCanvas' as TabId,        label: t.tabCanvas,   emoji: '🎨', color: '#ED6E1C' },
+    { id: 'stars' as TabId,              label: t.tabProgress, emoji: '🏆', color: '#FFB800' },
+    { id: 'floatingPlayground' as TabId, label: t.tabFloating, emoji: '🎈', color: '#38A169' },
+  ];
+
+  // Language switcher row
+  const LangSwitcher = ({ dark = false }: { dark?: boolean }) => (
+    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+      {(['en', 'ja', 'ne'] as Lang[]).map(l => {
+        const isActive = lang === l;
+        return (
+          <button
+            key={l}
+            onClick={() => setLang(l)}
+            style={{
+              padding: '0.2rem 0.45rem',
+              borderRadius: '99px',
+              border: isActive
+                ? (dark ? '2px solid #FF6BAA' : '2px solid rgba(255,255,255,0.9)')
+                : (dark ? '2px solid #ddd' : '2px solid rgba(255,255,255,0.35)'),
+              background: isActive
+                ? (dark ? '#FF6BAA' : 'rgba(255,255,255,0.95)')
+                : (dark ? 'transparent' : 'rgba(255,255,255,0.18)'),
+              color: isActive
+                ? (dark ? '#fff' : '#FF5FA0')
+                : (dark ? '#aaa' : 'rgba(255,255,255,0.8)'),
+              fontFamily: F,
+              fontWeight: 800,
+              fontSize: '0.65rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+              lineHeight: 1.4,
+            }}
+          >
+            {LANG_FLAGS[l]} {LANG_LABELS[l]}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const renderContent = (onEnterKiosk?: () => void) => {
     switch (activeTab) {
       case 'home':               return <HomeScreen onWordLearned={handleWordLearned} learnedWords={progress.wordsLearned} />;
@@ -83,48 +107,7 @@ const App: React.FC = () => {
   };
 
   const safeStars = !progress.totalStars || isNaN(progress.totalStars) ? 0 : progress.totalStars;
-
-  // Language switcher buttons — reused in both layouts
-  const LangSwitcher = () => (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.2rem',
-      background: 'rgba(255,255,255,0.18)',
-      borderRadius: '99px',
-      padding: '0.2rem',
-    }}>
-      {LANG_OPTIONS.map(opt => {
-        const isActive = lang === opt.code;
-        return (
-          <button
-            key={opt.code}
-            onClick={() => setLang(opt.code)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.2rem',
-              padding: '0.25rem 0.55rem',
-              borderRadius: '99px',
-              border: 'none',
-              background: isActive ? '#fff' : 'transparent',
-              color: isActive ? '#FF5FA0' : 'rgba(255,255,255,0.8)',
-              fontFamily: F,
-              fontWeight: isActive ? 900 : 700,
-              fontSize: '0.7rem',
-              cursor: 'pointer',
-              boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
-              transition: 'all 0.15s',
-              WebkitTapHighlightColor: 'transparent',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {opt.flag} {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+  const activeTabData = TABS.find(t => t.id === activeTab);
 
   // ── MAGIC CANVAS ──────────────────────────────────────────────────────────
   if (activeTab === 'magicCanvas') {
@@ -150,20 +133,20 @@ const App: React.FC = () => {
           width: '220px',
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(180deg, #ff80b5 0%, #7c6bff 100%)',
+          background: 'linear-gradient(180deg, #fff0f8 0%, #f5f0ff 100%)',
           borderRight: '4px solid #FFD6EC',
           flexShrink: 0,
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
           paddingLeft: 'env(safe-area-inset-left)',
         }}>
-          <div style={{ padding: '1.25rem 1rem 0.85rem', borderBottom: '3px solid rgba(255,255,255,0.3)' }}>
-            <h1 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.3rem', color: '#fff', margin: 0, textShadow: '1px 2px 0 rgba(0,0,0,0.15)' }}>
-              🌈 LearnYourBaby
+          <div style={{ padding: '1.25rem 1rem 0.85rem', borderBottom: '3px solid #FFD6EC' }}>
+            <h1 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.2rem', color: '#FF5FA0', margin: 0, textShadow: '1px 2px 0 #ffd6e8', lineHeight: 1.2 }}>
+              {t.appTitle}
             </h1>
-            {/* Language switcher in sidebar */}
-            <div style={{ marginTop: '0.6rem' }}>
-              <LangSwitcher />
+            {/* Language switcher */}
+            <div style={{ marginTop: '0.55rem' }}>
+              <LangSwitcher dark />
             </div>
           </div>
 
@@ -181,7 +164,7 @@ const App: React.FC = () => {
           }}>
             <span style={{ fontSize: '1.8rem' }}>⭐</span>
             <div>
-              <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: '#795B00', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Stars earned</p>
+              <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: '#795B00', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{t.starsEarned}</p>
               <p style={{ fontFamily: F, fontWeight: 900, fontSize: '1.6rem', color: '#FFB800', lineHeight: 1, margin: 0 }}>{safeStars}</p>
             </div>
           </div>
@@ -201,12 +184,11 @@ const App: React.FC = () => {
                     gap: '0.6rem',
                     padding: '0.7rem 0.85rem',
                     borderRadius: '1rem',
-                    border: isActive ? '2.5px solid rgba(255,255,255,0.6)' : '2.5px solid transparent',
-                    background: isActive ? 'rgba(255,255,255,0.25)' : 'transparent',
+                    border: isActive ? `2.5px solid ${tab.color}40` : '2.5px solid transparent',
+                    background: isActive ? `${tab.color}18` : 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                     textAlign: 'left',
-                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
                   <span style={{ fontSize: '1.35rem' }}>{tab.emoji}</span>
@@ -214,7 +196,7 @@ const App: React.FC = () => {
                     fontFamily: F,
                     fontWeight: isActive ? 900 : 700,
                     fontSize: '0.95rem',
-                    color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
+                    color: isActive ? tab.color : '#888',
                   }}>
                     {tab.label}
                   </span>
@@ -223,8 +205,8 @@ const App: React.FC = () => {
             })}
           </nav>
 
-          <div style={{ padding: '0.75rem 1rem', borderTop: '3px solid rgba(255,255,255,0.3)', textAlign: 'center' }}>
-            <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Made with ❤️ for babies</p>
+          <div style={{ padding: '0.75rem 1rem', borderTop: '3px solid #FFD6EC', textAlign: 'center' }}>
+            <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.65rem', color: '#ccc', margin: 0 }}>{t.madeWith}</p>
           </div>
         </div>
 
@@ -242,13 +224,13 @@ const App: React.FC = () => {
             alignItems: 'center',
             gap: '0.6rem',
             padding: '0.85rem 1.25rem',
-            background: `${(TABS.find(t => t.id === activeTab)?.color ?? '#FF6BAA')}15`,
-            borderBottom: `3px solid ${(TABS.find(t => t.id === activeTab)?.color ?? '#FF6BAA')}30`,
+            background: `${(activeTabData?.color ?? '#FF6BAA')}15`,
+            borderBottom: `3px solid ${(activeTabData?.color ?? '#FF6BAA')}30`,
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: '1.6rem' }}>{TABS.find(t => t.id === activeTab)?.emoji}</span>
-            <h2 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.2rem', color: TABS.find(t => t.id === activeTab)?.color ?? '#FF6BAA', margin: 0 }}>
-              {TABS.find(t => t.id === activeTab)?.label}
+            <span style={{ fontSize: '1.6rem' }}>{activeTabData?.emoji}</span>
+            <h2 style={{ fontFamily: F, fontWeight: 900, fontSize: '1.2rem', color: activeTabData?.color ?? '#FF6BAA', margin: 0 }}>
+              {activeTabData?.label}
             </h2>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -268,45 +250,42 @@ const App: React.FC = () => {
         flexShrink: 0,
         background: 'linear-gradient(135deg, #ff80b5 0%, #ffb347 55%, #ffe066 100%)',
         borderBottom: '4px solid #ffb080',
-        padding: '0.55rem 0.85rem',
+        padding: '0.5rem 1rem',
         position: 'sticky',
         top: 0,
         zIndex: 20,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-          {/* Title */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{
             fontFamily: F,
             fontWeight: 900,
-            fontSize: '1.1rem',
+            fontSize: '1.2rem',
             color: '#fff',
             margin: 0,
             lineHeight: 1.1,
             textShadow: '1px 2px 0 rgba(0,0,0,0.12)',
-            flexShrink: 0,
           }}>
-            🌈 LearnYourBaby
+            {t.appTitle}
           </h1>
-
-          {/* Language switcher — EN / JA / NE */}
-          <LangSwitcher />
-
-          {/* Stars */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.2rem',
+            gap: '0.25rem',
             background: 'rgba(255,255,255,0.92)',
             borderRadius: '99px',
-            padding: '0.25rem 0.6rem',
+            padding: '0.28rem 0.7rem',
             boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-            flexShrink: 0,
           }}>
             <span style={{ fontSize: '1rem' }}>⭐</span>
             <span style={{ fontFamily: F, fontWeight: 900, fontSize: '1rem', color: '#FF8C00' }}>
               {safeStars}
             </span>
           </div>
+        </div>
+
+        {/* Language switcher row */}
+        <div style={{ marginTop: '0.35rem' }}>
+          <LangSwitcher dark={false} />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrilingualWord, Category } from '../types';
 import { CATEGORIES, VOCABULARY } from '../data/vocabulary';
+import { useLang } from '../context/LanguageContext';
 
 interface HomeScreenProps {
   onWordLearned: (wordId: string) => void;
@@ -22,6 +23,7 @@ const THEMES = [
 const F = "'Nunito', 'Baloo 2', sans-serif";
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWords }) => {
+  const { t } = useLang();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -68,7 +70,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
             margin: '0.4rem 0 0.2rem',
             lineHeight: 1.15,
           }}>
-            What shall we learn today?
+            {t.homeHeading}
           </h1>
           <p style={{
             fontFamily: F,
@@ -77,7 +79,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
             color: '#7c6bff',
             margin: 0,
           }}>
-            Pick a picture book to begin! 📖✨
+            {t.pickBookSubtitle}
           </p>
         </div>
 
@@ -89,7 +91,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
           padding: '1rem 1rem 1.5rem',
         }}>
           {CATEGORIES.map((cat, i) => {
-            const t = THEMES[i % THEMES.length];
+            const th = THEMES[i % THEMES.length];
             const catWords = VOCABULARY.filter(v => v.meta_data.category === cat.name);
             const learned = catWords.filter(w => learnedWords.includes(w.meta_data.id)).length;
             const pct = catWords.length > 0 ? Math.round((learned / catWords.length) * 100) : 0;
@@ -100,11 +102,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                 onClick={() => { setSelectedCategory(cat.name); setCardIndex(0); setFlipped(false); }}
                 style={{
                   position: 'relative',
-                  background: t.card,
-                  border: `4px solid ${t.border}`,
+                  background: th.card,
+                  border: `4px solid ${th.border}`,
                   borderRadius: '1.6rem',
                   padding: '1rem 0.75rem 0.85rem',
-                  boxShadow: `0 6px 0 ${t.border}, 0 10px 20px rgba(0,0,0,0.08)`,
+                  boxShadow: `0 6px 0 ${th.border}, 0 10px 20px rgba(0,0,0,0.08)`,
                   cursor: 'pointer',
                   minHeight: '158px',
                   display: 'flex',
@@ -114,9 +116,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                   transition: 'transform 0.12s',
                   WebkitTapHighlightColor: 'transparent',
                 }}
-                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.95) translateY(4px)'; e.currentTarget.style.boxShadow = `0 2px 0 ${t.border}`; }}
-                onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = `0 6px 0 ${t.border}, 0 10px 20px rgba(0,0,0,0.08)`; }}
-                onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = `0 6px 0 ${t.border}, 0 10px 20px rgba(0,0,0,0.08)`; }}
+                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.95) translateY(4px)'; e.currentTarget.style.boxShadow = `0 2px 0 ${th.border}`; }}
+                onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = `0 6px 0 ${th.border}, 0 10px 20px rgba(0,0,0,0.08)`; }}
+                onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = `0 6px 0 ${th.border}, 0 10px 20px rgba(0,0,0,0.08)`; }}
               >
                 {pct === 100 && (
                   <span className="nursery-wobble" style={{ position: 'absolute', top: '-0.65rem', right: '-0.5rem', fontSize: '1.7rem' }}>🏆</span>
@@ -130,7 +132,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                   fontFamily: F,
                   fontWeight: 900,
                   fontSize: '1rem',
-                  color: t.label,
+                  color: th.label,
                   textAlign: 'center',
                   lineHeight: 1.2,
                   margin: 0,
@@ -145,19 +147,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                   borderRadius: '99px',
                   marginTop: '0.3rem',
                   overflow: 'hidden',
-                  border: `1.5px solid ${t.border}`,
+                  border: `1.5px solid ${th.border}`,
                 }}>
                   <div style={{
                     height: '100%',
                     width: `${pct}%`,
-                    background: t.btn,
+                    background: th.btn,
                     borderRadius: '99px',
                     transition: 'width 0.5s ease',
                   }} />
                 </div>
 
-                <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.7rem', color: t.label, opacity: 0.75, margin: 0 }}>
-                  {learned}/{catWords.length} words ✨
+                <p style={{ fontFamily: F, fontWeight: 700, fontSize: '0.7rem', color: th.label, opacity: 0.75, margin: 0 }}>
+                  {learned}/{catWords.length} {t.wordsLabel} ✨
                 </p>
               </button>
             );
@@ -322,7 +324,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                 fontSize: '0.85rem',
                 boxShadow: `0 4px 0 ${theme.border}`,
               }}>
-                👆 Tap to flip! ✨
+                {t.tapToFlip} ✨
               </div>
             </>
           ) : (
@@ -394,7 +396,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
                     borderRadius: '99px',
                     padding: '0.3rem 1rem',
                   }}>
-                    ✅ I learned this word! 🎉
+                    {t.learned}
                   </span>
                 </div>
               )}
@@ -429,7 +431,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
             transition: 'all 0.12s',
           }}
         >
-          ◀ Prev
+          ◀ {t.prev}
         </button>
 
         <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '72px' }}>
@@ -467,7 +469,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onWordLearned, learnedWo
             transition: 'all 0.12s',
           }}
         >
-          Next ▶
+          {t.next} ▶
         </button>
       </div>
     </div>
