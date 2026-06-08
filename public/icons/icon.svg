@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff80b5"/>
+      <stop offset="100%" style="stop-color:#c084fc"/>
+    </linearGradient>
+    <linearGradient id="book" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef9c3"/>
+      <stop offset="100%" style="stop-color:#fde68a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
+
+  <!-- Baby face circle -->
+  <circle cx="256" cy="195" r="115" fill="#fde8cc"/>
+  <!-- Ears -->
+  <circle cx="141" cy="200" r="30" fill="#fde8cc"/>
+  <circle cx="371" cy="200" r="30" fill="#fde8cc"/>
+
+  <!-- Hair -->
+  <ellipse cx="215" cy="92" rx="22" ry="30" fill="#92400e" transform="rotate(-15,215,92)"/>
+  <ellipse cx="256" cy="82" rx="22" ry="30" fill="#92400e"/>
+  <ellipse cx="297" cy="92" rx="22" ry="30" fill="#92400e" transform="rotate(15,297,92)"/>
+
+  <!-- Eyes -->
+  <ellipse cx="218" cy="178" rx="18" ry="20" fill="#1e1b4b"/>
+  <ellipse cx="294" cy="178" rx="18" ry="20" fill="#1e1b4b"/>
+  <circle cx="226" cy="170" r="6" fill="white"/>
+  <circle cx="302" cy="170" r="6" fill="white"/>
+
+  <!-- Cheeks -->
+  <circle cx="193" cy="218" r="22" fill="#ffb3c6" opacity="0.7"/>
+  <circle cx="319" cy="218" r="22" fill="#ffb3c6" opacity="0.7"/>
+
+  <!-- Nose -->
+  <ellipse cx="256" cy="210" rx="10" ry="7" fill="#f9a8d4"/>
+
+  <!-- Smile -->
+  <path d="M222 228 Q256 268 290 228" stroke="#c2410c" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- Open book -->
+  <rect x="100" y="340" width="135" height="105" rx="8" fill="url(#book)"/>
+  <rect x="277" y="340" width="135" height="105" rx="8" fill="url(#book)"/>
+  <rect x="245" y="335" width="22" height="115" rx="6" fill="#f59e0b"/>
+  <line x1="118" y1="368" x2="218" y2="368" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+  <line x1="118" y1="390" x2="218" y2="390" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+  <line x1="118" y1="412" x2="218" y2="412" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+  <line x1="294" y1="368" x2="394" y2="368" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+  <line x1="294" y1="390" x2="394" y2="390" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+  <line x1="294" y1="412" x2="394" y2="412" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Star top-left -->
+  <polygon points="80,90 86,108 106,108 90,120 96,138 80,126 64,138 70,120 54,108 74,108" fill="#fbbf24"/>
+  <!-- Star top-right -->
+  <polygon points="432,70 436,84 450,84 439,93 443,107 432,98 421,107 425,93 414,84 428,84" fill="#a78bfa"/>
+  <!-- Small star bottom-left -->
+  <polygon points="62,390 66,402 78,402 69,409 73,421 62,414 51,421 55,409 46,402 58,402" fill="#34d399"/>
+  <!-- Small star bottom-right -->
+  <polygon points="450,385 454,397 466,397 457,404 461,416 450,409 439,416 443,404 434,397 446,397" fill="#f472b6"/>
+</svg>
